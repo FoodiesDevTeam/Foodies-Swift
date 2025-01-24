@@ -3,6 +3,9 @@ import SwiftUI
 struct SignInView: View {
     @State private var username: String = ""
     @State private var password: String = ""
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    @State private var isAuthenticated = false
     
     var body: some View {
         VStack(spacing: 40) {
@@ -41,7 +44,12 @@ struct SignInView: View {
             
             // Sign in Button
             Button(action: {
-                // Sign in action
+                if UserDefaultsManager.shared.authenticateUser(username: username, password: password) {
+                    isAuthenticated = true
+                } else {
+                    alertMessage = "Invalid username or password"
+                    showAlert = true
+                }
             }) {
                 Text("Sign in")
                     .fontWeight(.semibold)
@@ -77,6 +85,14 @@ struct SignInView: View {
         }
         .padding(.top, 100)
         .navigationBarHidden(true)
+        .alert("Error", isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
+        .fullScreenCover(isPresented: $isAuthenticated) {
+            ContentView()
+        }
     }
 }
 

@@ -5,9 +5,29 @@ struct SignUpView: View {
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    @State private var navigateToProfile = false
+    @State private var showMainView = false
+    @State private var logoScale: CGFloat = 0.8
+    @State private var logoOpacity: Double = 0
     
     var body: some View {
         VStack(spacing: 40) {
+            // Logo
+            Image("foodies-logo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 200, height: 200)
+                .scaleEffect(logoScale)
+                .opacity(logoOpacity)
+                .onAppear {
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
+                        logoScale = 1.0
+                        logoOpacity = 1.0
+                    }
+                }
+            
             // Sign Up Text
             Text("Sign Up")
                 .font(.system(size: 40))
@@ -65,9 +85,27 @@ struct SignUpView: View {
             
             // Sign up Button
             Button(action: {
-                // Sign up action
-                // TODO: Implement authentication
-                NavigationUtil.navigate(to: CreateProfileView())
+                if password != confirmPassword {
+                    alertMessage = "Passwords do not match"
+                    showAlert = true
+                    return
+                }
+                
+                if UserDefaultsManager.shared.userExists(username: username) {
+                    alertMessage = "Username already exists"
+                    showAlert = true
+                    return
+                }
+                
+                let user = UserDefaultsManager.User(
+                    username: username,
+                    email: email,
+                    password: password
+                )
+                
+                UserDefaultsManager.shared.saveUser(user)
+                UserDefaultsManager.shared.setCurrentUser(username: username)
+                navigateToProfile = true
             }) {
                 Text("Sign up")
                     .fontWeight(.semibold)
@@ -99,6 +137,19 @@ struct SignUpView: View {
         }
         .padding(.top, 100)
         .navigationBarHidden(true)
+        .alert("Error", isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
+        .fullScreenCover(isPresented: $navigateToProfile) {
+            NavigationView {
+                PersonalInfoView()
+            }
+        }
+        .fullScreenCover(isPresented: $showMainView) {
+            MainTabView()
+        }
     }
 }
 
@@ -106,4 +157,4 @@ struct SignUpView: View {
     NavigationView {
         SignUpView()
     }
-} 
+}
