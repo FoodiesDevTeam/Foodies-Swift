@@ -4,224 +4,271 @@ import PhotosUI
 struct ProfileView: View {
     @State private var showSettings = false
     @State private var showEditProfile = false
+    @State private var showPhotosAndBio = false
     @State private var selectedItem: PhotosPickerItem?
     @State private var profileImage: UIImage?
     @State private var user: UserDefaultsManager.User?
+    @State private var navigateToSignIn = false
+    @State private var viewRefreshTrigger = false
+    @Environment(\.presentationMode) var presentationMode
     
+    // MARK: - Computed Properties
     private var userFullName: String {
-        if let info = user?.personalInfo {
-            return "\(info.firstName) \(info.lastName)"
-        }
-        return ""
+        guard let info = user?.personalInfo else { return "" }
+        return "\(info.name) \(info.surname)"
     }
     
     private var userAge: String {
-        if let info = user?.personalInfo,
-           let age = Calendar.current.dateComponents([.year], from: info.birthDate, to: Date()).year {
-            return "\(age) Years old"
-        }
-        return ""
+        guard let info = user?.personalInfo else { return "" }
+        let calendar = Calendar.current
+        let ageComponents = calendar.dateComponents([.year], from: info.birthDate, to: Date())
+        guard let age = ageComponents.year else { return "" }
+        return String(format: "%d yaş", age)
     }
     
     private var userLocation: String {
-        if let info = user?.personalInfo,
-           let city = info.city {
-            return "\(city), \(info.country)"
-        }
-        return ""
+        guard let info = user?.personalInfo,
+              let city = info.city else { return "" }
+        return "\(city), TR"
     }
     
+    // MARK: - View Body
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            ZStack {
-                LinearGradient(
-                    colors: [.pink, .purple, .blue],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                
-                HStack {
-                    Text("Profile")
-                        .font(.title2)
-                        .bold()
-                        .foregroundColor(.white)
-                    
-                    Spacer()
-                    
-                    Button(action: { showSettings = true }) {
-                        Image(systemName: "gearshape.fill")
-                            .foregroundColor(.white)
-                            .font(.system(size: 20))
-                    }
-                }
-                .padding()
-            }
-            .frame(height: 60)
-            
+            headerView
             ScrollView {
                 VStack(spacing: 20) {
-                    // Profile Header
-                    VStack(spacing: 16) {
-                        // Profile Photo
-                        ZStack(alignment: .bottomTrailing) {
-                            Group {
-                                if let profileImage = profileImage {
-                                    Image(uiImage: profileImage)
-                                        .resizable()
-                                        .scaledToFill()
-                                } else if let photoData = user?.photos?.first,
-                                          let uiImage = UIImage(data: photoData) {
-                                    Image(uiImage: uiImage)
-                                        .resizable()
-                                        .scaledToFill()
-                                } else {
-                                    Color.gray.opacity(0.3)
-                                }
-                            }
-                            .frame(width: 120, height: 120)
-                            .clipShape(Circle())
-                            
-                            PhotosPicker(selection: $selectedItem, matching: .images) {
-                                Circle()
-                                    .fill(Color.purple)
-                                    .frame(width: 32, height: 32)
-                                    .overlay(
-                                        Image(systemName: "camera.fill")
-                                            .foregroundColor(.white)
-                                            .font(.system(size: 16))
-                                    )
-                            }
-                        }
-                        
-                        if !userFullName.isEmpty {
-                            Text(userFullName)
-                                .font(.title2)
-                                .bold()
-                        }
-                        
-                        if let occupation = user?.personalInfo?.occupation {
-                            Text(occupation)
-                                .foregroundColor(.gray)
-                        }
-                        
-                        if !userAge.isEmpty {
-                            Text(userAge)
-                                .foregroundColor(.gray)
-                        }
-                        
-                        if !userLocation.isEmpty {
-                            Text(userLocation)
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding(.vertical)
-                    
-                    // Profile Info
-                    VStack(spacing: 24) {
-                        if let info = user?.personalInfo {
-                            ProfileInfoRow(icon: "person.fill", title: info.firstName)
-                        }
-                        
-                        if let email = user?.email {
-                            ProfileInfoRow(icon: "envelope.fill", title: email)
-                        }
-                        
-                        if let birthDate = user?.personalInfo?.birthDate {
-                            ProfileInfoRow(icon: "calendar", title: formatDate(birthDate))
-                        }
-                        
-                        if let city = user?.personalInfo?.city {
-                            ProfileInfoRow(icon: "mappin.and.ellipse", title: city)
-                        }
-                        
-                        if let occupation = user?.personalInfo?.occupation {
-                            ProfileInfoRow(icon: "briefcase.fill", title: occupation)
-                        }
-                    }
-                    .padding()
-                    .background(Color.white)
-                    .cornerRadius(12)
-                    .shadow(radius: 2)
-                    .padding(.horizontal)
+                    profileInfoView
+                    infoListView
                 }
+                .padding(.top, 20)
             }
-            
-            // Bottom Navigation
-            HStack(spacing: 0) {
-                ForEach(["house.fill", "message.fill", "heart.fill", "person.fill"], id: \.self) { icon in
-                    Button(action: {}) {
-                        VStack(spacing: 4) {
-                            Image(systemName: icon)
-                                .font(.system(size: 20))
-                            Circle()
-                                .fill(icon == "person.fill" ? Color.red : Color.clear)
-                                .frame(width: 4, height: 4)
-                        }
-                        .foregroundColor(icon == "person.fill" ? .red : .gray)
-                        .frame(maxWidth: .infinity)
-                    }
-                }
-            }
-            .padding(.vertical, 8)
-            .background(Color.white)
-            .shadow(radius: 2)
+            .background(Color(UIColor.systemGray6))
         }
+        .id(viewRefreshTrigger)
+        .edgesIgnoringSafeArea(.top)
         .sheet(isPresented: $showSettings) {
-            SettingsView()
+            SettingsView(onLogout: handleLogout)
         }
         .sheet(isPresented: $showEditProfile) {
-            EditProfileView(user: user)
+            NavigationView {
+                PersonalInfoView(isEditMode: true, onSave: handleProfileUpdate)
+            }
+        }
+        .sheet(isPresented: $showPhotosAndBio) {
+            NavigationView {
+                PhotosAndBioView(onboardingState: .photoBio)
+            }
+        }
+        .fullScreenCover(isPresented: $navigateToSignIn) {
+            SignInView()
         }
         .onChange(of: selectedItem) { newValue in
-            Task {
-                if let data = try? await newValue?.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    profileImage = image
-                    updateProfilePhoto(data)
-                }
-            }
+            handlePhotoSelection(newValue)
+        }
+        .onChange(of: LanguageManager.shared.currentLanguage) { _ in
+            viewRefreshTrigger.toggle()
         }
         .onAppear {
             loadUserData()
         }
     }
     
+    // MARK: - Subviews
+    private var headerView: some View {
+        ZStack {
+            LinearGradient(
+                colors: [.pink, .purple, .blue],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(height: 100)
+            
+            HStack {
+                Spacer()
+                Text(LanguageManager.shared.localizedString("profile"))
+                    .font(.title2)
+                    .bold()
+                    .foregroundColor(.white)
+                Spacer()
+                
+                Button(action: { showSettings = true }) {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(.white)
+                        .font(.system(size: 24))
+                }
+            }
+            .padding(.horizontal)
+            .padding(.top, 40)
+        }
+    }
+    
+    private var profileInfoView: some View {
+        VStack(spacing: 10) {
+            profilePhotoView
+            profileBasicInfoView
+        }
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(20)
+        .shadow(radius: 1)
+        .padding(.horizontal)
+    }
+    
+    private var profilePhotoView: some View {
+        VStack {
+            Group {
+                if let profileImage = profileImage {
+                    Image(uiImage: profileImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 120, height: 120)
+                        .clipShape(Circle())
+                        .padding(.top, 20)
+                } else if let photos = user?.photos,
+                          let photoData = photos.first,
+                          let uiImage = UIImage(data: photoData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 120, height: 120)
+                        .clipShape(Circle())
+                        .padding(.top, 20)
+                } else {
+                    Circle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 120, height: 120)
+                        .padding(.top, 20)
+                }
+            }
+            
+            Button(action: { showPhotosAndBio = true }) {
+                Text("Fotoğraf ve Bio Düzenle")
+                    .font(.subheadline)
+                    .foregroundColor(.blue)
+            }
+            .padding(.top, 5)
+        }
+    }
+    
+    private var profileBasicInfoView: some View {
+        VStack(spacing: 5) {
+            Text(userFullName)
+                .font(.title2)
+                .bold()
+            
+            if let occupation = user?.personalInfo?.occupation {
+                Text(occupation)
+                    .font(.headline)
+                    .foregroundColor(.gray)
+            }
+            
+            Text(userAge)
+                .font(.subheadline)
+                .foregroundColor(.gray)
+                .padding(.bottom, 2)
+            
+            Text(userLocation)
+                .font(.subheadline)
+                .foregroundColor(.gray)
+            
+            if let bio = user?.bio {
+                Text(bio)
+                    .font(.body)
+                    .foregroundColor(.black)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 8)
+                    .padding(.horizontal)
+            }
+        }
+        .padding(.bottom, 15)
+    }
+    
+    private var infoListView: some View {
+        VStack(spacing: 0) {
+            infoRow(icon: "person", text: userFullName)
+            if let email = user?.email {
+                infoRow(icon: "envelope", text: email)
+            }
+            if let birthDate = user?.personalInfo?.birthDate {
+                infoRow(icon: "calendar", text: formatDate(birthDate))
+            }
+            if let city = user?.personalInfo?.city {
+                infoRow(icon: "mappin.and.ellipse", text: city)
+            }
+            if let occupation = user?.personalInfo?.occupation {
+                infoRow(icon: "briefcase", text: occupation, isLast: true)
+            }
+        }
+        .cornerRadius(12)
+        .shadow(radius: 1)
+        .padding(.horizontal)
+    }
+    
+    private func infoRow(icon: String, text: String, isLast: Bool = false) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(.gray)
+                    .frame(width: 30)
+                Text(text)
+                    .foregroundColor(.black)
+                Spacer()
+            }
+            .padding()
+            .background(Color(UIColor.systemBackground))
+            
+            if !isLast {
+                Divider()
+            }
+        }
+    }
+    
+    // MARK: - Helper Methods
+    private func handleLogout() {
+        if let username = user?.username {
+            UserDefaultsManager.shared.removeUser(username: username)
+            NotificationCenter.default.post(name: NSNotification.Name("UserDidLogout"), object: nil)
+        }
+        showSettings = false
+    }
+    
+    private func handleProfileUpdate() {
+        showEditProfile = false
+        loadUserData()
+    }
+    
+    private func handlePhotoSelection(_ item: PhotosPickerItem?) {
+        Task {
+            if let data = try? await item?.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                profileImage = image
+                updateProfilePhoto(data)
+            }
+        }
+    }
+    
     private func loadUserData() {
-        user = UserDefaultsManager.shared.getCurrentUser()
+        if let username = UserDefaultsManager.shared.getCurrentUser()?.username {
+            user = UserDefaultsManager.shared.getUser(username: username)
+        }
     }
     
     private func updateProfilePhoto(_ photoData: Data) {
-        guard var currentUser = user else { return }
-        if currentUser.photos == nil {
-            currentUser.photos = []
+        guard let username = user?.username else { return }
+        var photos = user?.photos ?? []
+        if !photos.isEmpty {
+            photos[0] = photoData
+        } else {
+            photos.append(photoData)
         }
-        currentUser.photos?.insert(photoData, at: 0)
-        UserDefaultsManager.shared.updateCurrentUser(user: currentUser)
+        UserDefaultsManager.shared.updateUserPhotos(username: username, photos: photos)
         loadUserData()
     }
     
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .long
+        formatter.locale = Locale(identifier: LanguageManager.shared.currentLanguage == .english ? "en_US" : "tr_TR")
         return formatter.string(from: date)
-    }
-}
-
-struct ProfileInfoRow: View {
-    let icon: String
-    let title: String
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(.purple)
-                .frame(width: 24)
-            
-            Text(title)
-                .foregroundColor(.black)
-            
-            Spacer()
-        }
     }
 }

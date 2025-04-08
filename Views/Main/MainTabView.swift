@@ -6,38 +6,38 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             NavigationView {
-                MatchView(matchType: .bestMatch)
+                MatchView()
             }
             .tabItem {
                 Image(systemName: "flame.fill")
-                Text("Best Match")
+                Text("Eşleşmeler")
             }
             .tag(0)
             
             NavigationView {
-                CloseToYouView()
+                ChatView()
             }
             .tabItem {
-                Image(systemName: "location.fill")
-                Text("Close To You")
+                Image(systemName: "message.fill")
+                Text("Mesajlar")
             }
             .tag(1)
             
             NavigationView {
-                Text("Messages")
+                MatchesView()
             }
             .tabItem {
-                Image(systemName: "message.fill")
-                Text("Messages")
+                Image(systemName: "person.2.fill")
+                Text("Matchlerim")
             }
             .tag(2)
             
             NavigationView {
-                Text("Profile")
+                ProfileView()
             }
             .tabItem {
                 Image(systemName: "person.fill")
-                Text("Profile")
+                Text("Profil")
             }
             .tag(3)
         }

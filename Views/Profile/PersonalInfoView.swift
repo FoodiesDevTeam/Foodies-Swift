@@ -1,16 +1,27 @@
 import SwiftUI
 
 struct PersonalInfoView: View {
+    @Environment(\.colorScheme) var colorScheme
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.presentationMode) var presentationMode
+    @StateObject private var viewModel = PersonalInfoViewModel()
     @State private var firstName: String = ""
     @State private var lastName: String = ""
     @State private var birthDate = Date()
     @State private var showDatePicker = false
-    @State private var gender: UserDefaultsManager.Gender = .any
+    @State private var gender: UserDefaultsManager.Gender = .male
     @State private var city: String = ""
     @State private var occupation: String = ""
     @State private var smokingStatus: UserDefaultsManager.SmokingStatus = .no
     @State private var drinkingStatus: UserDefaultsManager.DrinkingStatus = .no
-    @State private var navigateNext = false
+    @State private var isLoading = false
+    @State private var alertMessage = ""
+    @State private var showAlert = false
+    @State private var onboardingState: OnboardingState = .personalInfo
+    @State private var navigateToPreferences = false
+    
+    let isEditMode: Bool
+    var onSave: (() -> Void)?
     
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -21,27 +32,28 @@ struct PersonalInfoView: View {
     }()
     
     var body: some View {
-        VStack(spacing: 25) {
-            Text("Kişisel Bilgiler")
-                .font(.system(size: 40))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.blue, .purple, .pink],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
+        VStack(spacing: Constants.Design.defaultSpacing) {
+            // Progress Bar
+            ProgressView(value: onboardingState.progress)
+                .progressViewStyle(.linear)
+                .tint(Color.purple)
+                .padding(.horizontal)
+            
+            Text(onboardingState.title)
+                .font(.system(size: Constants.FontSizes.title1, weight: .bold))
+                .foregroundStyle(Constants.Design.mainGradient)
             
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: Constants.Design.defaultSpacing) {
                     // Ad Soyad
                     Group {
                         CustomTextField(text: $firstName, icon: "person", placeholder: "Adınız")
                         CustomTextField(text: $lastName, icon: "person", placeholder: "Soyadınız")
                     }
+                    .padding(.horizontal)
                     
                     // Doğum Tarihi
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: Constants.Design.defaultPadding) {
                         Text("Doğum Tarihi")
                             .foregroundColor(.gray)
                         Button(action: {
@@ -51,21 +63,17 @@ struct PersonalInfoView: View {
                                 Image(systemName: "calendar")
                                     .foregroundColor(.gray)
                                 Text(dateFormatter.string(from: birthDate))
-                                    .foregroundColor(.black)
+                                    .foregroundColor(.primary)
                                 Spacer()
                                 Image(systemName: "chevron.right")
                                     .foregroundColor(.gray)
                             }
                             .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.gray.opacity(0.1))
-                            )
+                            .background(Color(.systemBackground))
+                            .cornerRadius(Constants.Design.cornerRadius)
                         }
                     }
-                    .sheet(isPresented: $showDatePicker) {
-                        DatePickerSheet(birthDate: $birthDate, isPresented: $showDatePicker)
-                    }
+                    .padding(.horizontal)
                     
                     // Cinsiyet
                     VStack(alignment: .leading) {
@@ -77,12 +85,14 @@ struct PersonalInfoView: View {
                         }
                         .pickerStyle(.segmented)
                     }
+                    .padding(.horizontal)
                     
                     // Şehir ve Meslek
                     Group {
                         CustomTextField(text: $city, icon: "location", placeholder: "Şehir")
                         CustomTextField(text: $occupation, icon: "briefcase", placeholder: "Meslek")
                     }
+                    .padding(.horizontal)
                     
                     // Sigara ve Alkol Kullanımı
                     Group {
@@ -106,11 +116,12 @@ struct PersonalInfoView: View {
                             .pickerStyle(.segmented)
                         }
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.horizontal)
+                .padding(.vertical)
             }
             
-            // İleri Butonu
+            // İleri/Kaydet Butonu
             Button(action: {
                 savePersonalInfo()
             }) {
@@ -119,45 +130,127 @@ struct PersonalInfoView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(
-                        LinearGradient(
-                            colors: [.pink, .purple, .blue],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(12)
+                    .background(Constants.Design.mainGradient)
+                    .cornerRadius(Constants.Design.cornerRadius)
             }
-            .padding(.horizontal)
-            .disabled(firstName.isEmpty || lastName.isEmpty || city.isEmpty || occupation.isEmpty)
-        }
-        .padding(.top, 50)
-        .navigationBarHidden(true)
-        .background(
-            NavigationLink(isActive: $navigateNext) {
-                AppPreferencesView()
-            } label: {
+            .disabled(isLoading)
+            .padding()
+            
+            NavigationLink(destination: AppPreferencesView(onboardingState: .preferences), isActive: $navigateToPreferences) {
                 EmptyView()
             }
+        }
+        .padding(.top, Constants.Design.defaultPadding)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color(.systemBackground).opacity(0.8),
+                    Color.blue.opacity(0.1),
+                    Color.purple.opacity(0.1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
         )
+        .sheet(isPresented: $showDatePicker) {
+            DatePickerSheet(birthDate: $birthDate, isPresented: $showDatePicker)
+        }
+        .alert("Hata", isPresented: $showAlert) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
     }
     
     private func savePersonalInfo() {
+        print("savePersonalInfo başladı")
+        guard validateFields() else { 
+            print("validateFields başarısız")
+            return 
+        }
+        
+        isLoading = true
+        print("Yükleniyor başladı")
+        
+        let personalInfo = UserDefaultsManager.PersonalInfo(
+            name: firstName,
+            surname: lastName,
+            birthDate: birthDate,
+            phoneNumber: "",
+            countryCode: "",
+            smokingStatus: smokingStatus,
+            drinkingStatus: drinkingStatus,
+            city: city,
+            occupation: occupation,
+            email: "",
+            gender: gender
+        )
+        
         if let username = UserDefaultsManager.shared.getCurrentUser()?.username {
-            let personalInfo = UserDefaultsManager.PersonalInfo(
-                firstName: firstName,
-                lastName: lastName,
-                birthDate: birthDate,
-                gender: gender,
-                city: city.isEmpty ? nil : city,
-                occupation: occupation.isEmpty ? nil : occupation,
-                smokingStatus: smokingStatus,
-                drinkingStatus: drinkingStatus, country: "k"
-            )
+            print("Kullanıcı bulundu: \(username)")
             UserDefaultsManager.shared.updateUserPersonalInfo(username: username, personalInfo: personalInfo)
-            navigateNext = true
+            print("Kullanıcı bilgileri güncellendi")
+            
+            if isEditMode {
+                print("Edit mode: true")
+                onSave?()
+                isLoading = false
+                dismiss()
+            } else {
+                print("Edit mode: false, onSave çağrılıyor")
+                onSave?()
+                isLoading = false
+                navigateToPreferences = true
+            }
+        } else {
+            print("Kullanıcı bulunamadı")
+            // Kullanıcı henüz kaydedilmemişse, yeni kullanıcı oluştur
+            let newUsername = UUID().uuidString
+            let newUser = UserDefaultsManager.User(username: newUsername)
+            UserDefaultsManager.shared.setCurrentUser(username: newUsername)
+            UserDefaultsManager.shared.updateUserPersonalInfo(username: newUsername, personalInfo: personalInfo)
+            print("Yeni kullanıcı oluşturuldu ve bilgiler kaydedildi")
+            onSave?()
+            isLoading = false
+            if !isEditMode {
+                navigateToPreferences = true
+            }
         }
     }
+    
+    private func validateFields() -> Bool {
+        if firstName.isEmpty {
+            alertMessage = "Lütfen adınızı girin"
+            showAlert = true
+            return false
+        }
+        
+        if lastName.isEmpty {
+            alertMessage = "Lütfen soyadınızı girin"
+            showAlert = true
+            return false
+        }
+        
+        if city.isEmpty {
+            alertMessage = "Lütfen şehir bilgisini girin"
+            showAlert = true
+            return false
+        }
+        
+        if occupation.isEmpty {
+            alertMessage = "Lütfen meslek bilgisini girin"
+            showAlert = true
+            return false
+        }
+        
+        return true
+    }
+}
+
+class PersonalInfoViewModel: ObservableObject {
+    @Published var isNavigatingToPreferences = false
 }
 
 struct CustomTextField: View {
@@ -171,9 +264,17 @@ struct CustomTextField: View {
                 Image(systemName: icon)
                     .foregroundColor(.gray)
                 TextField(placeholder, text: $text)
+                    .textFieldStyle(PlainTextFieldStyle())
             }
+            .padding(.vertical, 8)
             Divider()
+                .background(Color.gray.opacity(0.5))
         }
+        .padding(.horizontal)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(.systemBackground))
+        )
     }
 }
 
@@ -181,36 +282,57 @@ struct DatePickerSheet: View {
     @Binding var birthDate: Date
     @Binding var isPresented: Bool
     
+    private let gradient = LinearGradient(
+        colors: [.blue, .purple, .pink],
+        startPoint: .leading,
+        endPoint: .trailing
+    )
+    
     var body: some View {
         NavigationView {
-            VStack {
-                DatePicker(
-                    "Doğum Tarihi",
-                    selection: $birthDate,
-                    displayedComponents: .date
+            ZStack {
+                // Arkaplan gradyanı
+                LinearGradient(
+                    colors: [
+                        Color(.systemBackground),
+                        Color(.systemBackground).opacity(0.8),
+                        Color.blue.opacity(0.1),
+                        Color.purple.opacity(0.1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
-                .datePickerStyle(.wheel)
-                .labelsHidden()
-                .padding()
+                .ignoresSafeArea()
                 
-                Button(action: {
-                    isPresented = false
-                }) {
-                    Text("Seç")
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            LinearGradient(
-                                colors: [.pink, .purple, .blue],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .cornerRadius(12)
+                VStack {
+                    DatePicker(
+                        "Doğum Tarihi",
+                        selection: $birthDate,
+                        displayedComponents: .date
+                    )
+                    .datePickerStyle(.wheel)
+                    .labelsHidden()
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    )
+                    
+                    Button(action: {
+                        isPresented = false
+                    }) {
+                        Text("Seç")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(gradient)
+                            .cornerRadius(12)
+                            .shadow(color: Color.purple.opacity(0.3), radius: 5, x: 0, y: 2)
+                    }
+                    .padding()
                 }
-                .padding()
             }
             .navigationTitle("Doğum Tarihi Seç")
             .navigationBarTitleDisplayMode(.inline)
@@ -219,6 +341,7 @@ struct DatePickerSheet: View {
                     Button("Kapat") {
                         isPresented = false
                     }
+                    .foregroundStyle(gradient)
                 }
             }
         }

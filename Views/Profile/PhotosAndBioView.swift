@@ -2,137 +2,176 @@ import SwiftUI
 import PhotosUI
 
 struct PhotosAndBioView: View {
-    @State private var bio = ""
+    @Environment(\.dismiss) private var dismiss
+    @State private var bio: String = ""
     @State private var selectedItems: [PhotosPickerItem] = []
-    @State private var selectedPhotosData: [Data] = []
-    @State private var showMainView = false
+    @State private var selectedImages: [UIImage] = []
+    @State private var isLoading = false
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    
+    let onboardingState: OnboardingState
+    var onSave: (() -> Void)?
     
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Fotoğraflarını ve Bio'nu Ekle")
-                .font(.title)
-                .bold()
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.blue, .purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
+        VStack(spacing: Constants.Design.defaultSpacing) {
+            // Progress Bar
+            ProgressView(value: onboardingState.progress)
+                .progressViewStyle(.linear)
+                .tint(Color.purple)
+                .padding(.horizontal)
             
-            // Photos Picker
-            PhotosPicker(
-                selection: $selectedItems,
-                maxSelectionCount: 6,
-                matching: .images
-            ) {
-                VStack {
-                    Image(systemName: "photo.on.rectangle.angled")
-                        .font(.system(size: 40))
-                        .foregroundColor(.purple)
-                    Text("Fotoğraf Seç (Max 6)")
-                        .foregroundColor(.purple)
-                }
-                .padding()
-                .background(Color.purple.opacity(0.1))
-                .cornerRadius(10)
-            }
+            Text(onboardingState.title)
+                .font(.system(size: Constants.FontSizes.title1, weight: .bold))
+                .foregroundStyle(Constants.Design.mainGradient)
             
-            // Selected Photos Preview
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(selectedPhotosData, id: \.self) { photoData in
-                        if let uiImage = UIImage(data: photoData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 100, height: 100)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                                .overlay(
-                                    Button(action: {
-                                        if let index = selectedPhotosData.firstIndex(of: photoData) {
-                                            selectedPhotosData.remove(at: index)
-                                            selectedItems.remove(at: index)
-                                        }
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.white)
-                                            .background(Color.black.opacity(0.7))
-                                            .clipShape(Circle())
-                                    }
-                                    .padding(5),
-                                    alignment: .topTrailing
-                                )
+            ScrollView {
+                VStack(spacing: Constants.Design.defaultSpacing) {
+                    // Fotoğraf Seçici
+                    PhotosPicker(
+                        selection: $selectedItems,
+                        maxSelectionCount: 6,
+                        matching: .images
+                    ) {
+                        VStack {
+                            if selectedImages.isEmpty {
+                                Image(systemName: "photo.on.rectangle.angled")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(.gray)
+                                Text("Fotoğraf Ekle")
+                                    .font(.headline)
+                                    .foregroundColor(.gray)
+                            }
+                            
+                            // Seçilen fotoğrafları göster
+                            LazyVGrid(columns: [
+                                GridItem(.flexible()),
+                                GridItem(.flexible()),
+                                GridItem(.flexible())
+                            ], spacing: 10) {
+                                ForEach(selectedImages, id: \.self) { image in
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
+                            }
                         }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: selectedImages.isEmpty ? 150 : nil)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                        )
+                    }
+                    .onChange(of: selectedItems) { _ in
+                        Task {
+                            await loadImages()
+                        }
+                    }
+                    
+                    // Bio Text Editor
+                    VStack(alignment: .leading) {
+                        Text("Hakkında")
+                            .font(.headline)
+                            .foregroundStyle(Constants.Design.mainGradient)
+                        
+                        TextEditor(text: $bio)
+                            .frame(height: 150)
+                            .padding(8)
+                            .background(
+                                RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
                     }
                 }
                 .padding(.horizontal)
             }
             
-            // Bio TextField
-            VStack(alignment: .leading) {
-                Text("Bio")
-                    .font(.headline)
-                TextEditor(text: $bio)
-                    .frame(height: 100)
-                    .padding(8)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                Text("\(bio.count)/500 karakter")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            .padding(.horizontal)
-            
-            // Save Button
-            Button(action: {
-                savePhotosAndBio()
-            }) {
-                Text("Kaydet ve Devam Et")
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(
-                        LinearGradient(
-                            colors: [.purple, .blue],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .cornerRadius(12)
-            }
-            .padding(.horizontal)
-        }
-        .onChange(of: selectedItems) { items in
-            Task {
-                selectedPhotosData = []
-                for item in items {
-                    if let data = try? await item.loadTransferable(type: Data.self) {
-                        selectedPhotosData.append(data)
-                    }
+            // Kaydet ve Bitir Butonu
+            Button(action: savePhotosAndBio) {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else {
+                    Text("Kaydet ve Bitir")
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
                 }
             }
+            .background(
+                RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                    .fill(Constants.Design.mainGradient)
+            )
+            .padding(.horizontal)
+            .disabled(isLoading || selectedImages.isEmpty)
         }
-        .fullScreenCover(isPresented: $showMainView) {
-            MainTabView()
+        .padding(.vertical, Constants.Design.defaultPadding)
+        .background(
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color(.systemBackground).opacity(0.8),
+                    Color.blue.opacity(0.1),
+                    Color.purple.opacity(0.1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
+        .navigationBarBackButtonHidden(true)
+        .alert("Hata", isPresented: $showAlert) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
         }
     }
     
-    private func savePhotosAndBio() {
-        if let username = UserDefaultsManager.shared.getCurrentUser()?.username {
-            UserDefaultsManager.shared.updateUserPhotosAndBio(
-                username: username,
-                photos: selectedPhotosData,
-                bio: bio
-            )
-            showMainView = true
+    private func loadImages() async {
+        isLoading = true
+        selectedImages.removeAll()
+        
+        for item in selectedItems {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                await MainActor.run {
+                    selectedImages.append(image)
+                }
+            }
         }
+        
+        isLoading = false
+    }
+    
+    private func savePhotosAndBio() {
+        guard let username = UserDefaultsManager.shared.getCurrentUser()?.username else {
+            alertMessage = "Kullanıcı bilgisi bulunamadı"
+            showAlert = true
+            return
+        }
+        
+        isLoading = true
+        
+        // Fotoğrafları Data formatına çevir
+        let photosData = selectedImages.compactMap { $0.jpegData(compressionQuality: 0.7) }
+        
+        // UserDefaults'a kaydet
+        UserDefaultsManager.shared.updateUserPhotosAndBio(
+            username: username,
+            photos: photosData,
+            bio: bio
+        )
+        
+        isLoading = false
+        onSave?()
     }
 }
 
-struct PhotosAndBioView_Previews: PreviewProvider {
-    static var previews: some View {
-        PhotosAndBioView()
-    }
+#Preview {
+    PhotosAndBioView(onboardingState: .photoBio) { }
 }

@@ -6,23 +6,29 @@ enum MatchType {
 }
 
 struct MatchView: View {
-    let matchType: MatchType
+    @State private var matchType: MatchType = .bestMatch
     @State private var currentIndex = 0
     @State private var potentialMatches: [UserDefaultsManager.User] = []
     @State private var remainingLikes = 3
+    @State private var showMatchAlert = false
+    @State private var matchedUser: UserDefaultsManager.User?
+    @State private var showMeetingSetup = false
     
     var body: some View {
         VStack(spacing: 0) {
             // Header
             VStack(spacing: 0) {
                 // Segment Control
-                Picker("Match Type", selection: .constant(matchType == .bestMatch ? 0 : 1)) {
-                    Text("Best Match").tag(0)
-                    Text("Close To You").tag(1)
+                Picker("Match Type", selection: $matchType) {
+                    Text("Best Match").tag(MatchType.bestMatch)
+                    Text("Close To You").tag(MatchType.closeToYou)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.vertical, 8)
+                .onChange(of: matchType) { _ in
+                    loadMatches()
+                }
             }
             .background(
                 LinearGradient(
@@ -96,7 +102,7 @@ struct MatchView: View {
                             }
                             
                             Button(action: { handleSuperLike() }) {
-                                Image(systemName: "heart.fill")
+                                Image(systemName: "star.fill")
                                     .font(.system(size: 30))
                                     .foregroundColor(.yellow)
                                     .frame(width: 60, height: 60)
@@ -106,7 +112,7 @@ struct MatchView: View {
                             }
                             
                             Button(action: { handleLike() }) {
-                                Image(systemName: "checkmark")
+                                Image(systemName: "heart.fill")
                                     .font(.system(size: 30))
                                     .foregroundColor(.green)
                                     .frame(width: 60, height: 60)
@@ -116,12 +122,12 @@ struct MatchView: View {
                             }
                         }
                         .padding(.vertical, 20)
-                        .background(Color.black)
+                        .background(Color.white)
                     }
                 }
             } else {
                 Spacer()
-                Text("No more matches")
+                Text("Daha fazla eşleşme yok")
                     .font(.title)
                     .foregroundColor(.gray)
                 Spacer()
@@ -132,6 +138,89 @@ struct MatchView: View {
             loadMatches()
             updateRemainingLikes()
         }
+        .sheet(isPresented: $showMeetingSetup) {
+            if let matchedUser = matchedUser {
+                ScheduleMeetingView(otherUser: matchedUser)
+            }
+        }
+        .overlay(
+            ZStack {
+                if showMatchAlert, let user = matchedUser, let info = user.personalInfo {
+                    // Match Alert Overlay
+                    Color.black.opacity(0.6)
+                        .edgesIgnoringSafeArea(.all)
+                    
+                    VStack(spacing: 20) {
+                        Text("Başarılı Eşleşme!")
+                            .font(.title)
+                            .bold()
+                            .foregroundColor(.white)
+                        
+                        Spacer()
+                        
+                        if let photoData = user.photos?.first,
+                           let uiImage = UIImage(data: photoData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 150, height: 150)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.white, lineWidth: 3))
+                        } else {
+                            Circle()
+                                .fill(Color.gray)
+                                .frame(width: 150, height: 150)
+                                .overlay(Circle().stroke(Color.white, lineWidth: 3))
+                        }
+                        
+                        Text("\(info.firstName) \(info.lastName) ile eşleştiniz!")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 20) {
+                            Button(action: {
+                                showMatchAlert = false
+                            }) {
+                                Text("Sonra")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(Color.gray)
+                                    .cornerRadius(12)
+                            }
+                            
+                            Button(action: {
+                                showMatchAlert = false
+                                showMeetingSetup = true
+                            }) {
+                                Text("Buluşma Ayarla")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(Color.pink)
+                                    .cornerRadius(12)
+                            }
+                        }
+                    }
+                    .padding()
+                    .frame(width: 300, height: 400)
+                    .background(
+                        LinearGradient(
+                            colors: [.purple, .blue],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .cornerRadius(20)
+                    .shadow(radius: 10)
+                }
+            }
+        )
     }
     
     private func loadMatches() {
@@ -142,6 +231,8 @@ struct MatchView: View {
                     potentialMatches = potentialMatches.filter { $0.personalInfo?.city == userCity }
                 }
             }
+            // Reset current index when switching match types
+            currentIndex = 0
         }
     }
     
@@ -173,6 +264,10 @@ struct MatchView: View {
             toUser: match.username,
             type: .superLike
         )
+        
+        // Eşleşme kontrolü
+        checkForMatch(currentUser: currentUser, potentialMatch: match)
+        
         updateRemainingLikes()
         moveToNextMatch()
     }
@@ -186,7 +281,36 @@ struct MatchView: View {
             toUser: match.username,
             type: .like
         )
+        
+        // Eşleşme kontrolü
+        checkForMatch(currentUser: currentUser, potentialMatch: match)
+        
         moveToNextMatch()
+    }
+    
+    private func checkForMatch(currentUser: UserDefaultsManager.User, potentialMatch: UserDefaultsManager.User) {
+        // Karşı taraf da bizi beğenmiş mi kontrol et
+        let matchActions = UserDefaultsManager.shared.getMatchActions()
+        let isMatched = matchActions.contains { action in
+            action.fromUser == potentialMatch.username &&
+            action.toUser == currentUser.username &&
+            (action.type == .like || action.type == .superLike)
+        }
+        
+        if isMatched {
+            // Eşleşme başarılı
+            matchedUser = potentialMatch
+            showMatchAlert = true
+            
+            // Otomatik olarak bir buluşma oluştur
+            _ = UserDefaultsManager.shared.createMeeting(
+                creatorId: currentUser.username,
+                participantId: potentialMatch.username,
+                restaurantName: "Daha sonra seçilecek",
+                location: "Daha sonra seçilecek",
+                date: Date()
+            )
+        }
     }
     
     private func moveToNextMatch() {
@@ -197,5 +321,70 @@ struct MatchView: View {
     
     private func calculateAge(from date: Date) -> Int {
         Calendar.current.dateComponents([.year], from: date, to: Date()).year ?? 0
+    }
+}
+
+struct ScheduleMeetingView: View {
+    let otherUser: UserDefaultsManager.User
+    @State private var meetingDate = Date()
+    @State private var meetingCreated = false
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Buluşma Tarihi Seçin")) {
+                    DatePicker("Buluşma tarihi", selection: $meetingDate, in: Date()..., displayedComponents: [.date, .hourAndMinute])
+                        .datePickerStyle(GraphicalDatePickerStyle())
+                }
+                
+                Section {
+                    if let info = otherUser.personalInfo {
+                        HStack {
+                            Image(systemName: "person.fill")
+                                .foregroundColor(.blue)
+                            Text("\(info.firstName) \(info.lastName)")
+                        }
+                    }
+                    
+                    Button(action: createMeeting) {
+                        Text("Buluşma Oluştur")
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                }
+            }
+            .navigationBarTitle("Buluşma Ayarla", displayMode: .inline)
+            .navigationBarItems(trailing: Button("Kapat") {
+                presentationMode.wrappedValue.dismiss()
+            })
+            .alert(isPresented: $meetingCreated) {
+                Alert(
+                    title: Text("Buluşma Oluşturuldu"),
+                    message: Text("Buluşmanız başarıyla oluşturuldu. Buluşma tarihinde QR kod ile doğrulama yapmayı unutmayın."),
+                    dismissButton: .default(Text("Tamam")) {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                )
+            }
+        }
+    }
+    
+    private func createMeeting() {
+        guard let currentUser = UserDefaultsManager.shared.getCurrentUser() else { return }
+        
+        // Buluşma oluştur
+        _ = UserDefaultsManager.shared.createMeeting(
+            creatorId: currentUser.username,
+            participantId: otherUser.username,
+            restaurantName: "Daha sonra seçilecek",
+            location: "Daha sonra seçilecek",
+            date: meetingDate
+        )
+        
+        meetingCreated = true
     }
 }

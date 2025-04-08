@@ -1,193 +1,215 @@
 import SwiftUI
 
 struct SecurityView: View {
-    @Environment(\.dismiss) var dismiss
-    @State private var showTwoFactorSetup = false
-    @State private var showBiometricSetup = false
-    @State private var settings: UserDefaultsManager.UserSettings?
+    @Environment(\.dismiss) private var dismiss
+    @State private var currentPassword = ""
+    @State private var newPassword = ""
+    @State private var confirmPassword = ""
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    @State private var isLoading = false
     
     var body: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Authentication")) {
-                    if let settings = settings {
-                        NavigationLink(destination: TwoFactorSetupView(isEnabled: settings.twoFactorEnabled)) {
-                            HStack {
-                                Image(systemName: "key.fill")
-                                    .foregroundColor(.yellow)
-                                Text("Two-Factor Authentication")
-                                Spacer()
-                                if settings.twoFactorEnabled {
-                                    Text("On")
-                                        .foregroundColor(.green)
-                                } else {
-                                    Text("Off")
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                        }
-                        
-                        Toggle(isOn: .constant(true)) {
-                            HStack {
-                                Image(systemName: "faceid")
-                                    .foregroundColor(.blue)
-                                Text("Face ID / Touch ID")
-                            }
-                        }
-                    }
-                }
-                
-                Section(header: Text("Privacy")) {
-                    NavigationLink(destination: PrivacySettingsView()) {
-                        HStack {
-                            Image(systemName: "hand.raised.fill")
-                                .foregroundColor(.red)
-                            Text("Privacy Settings")
-                        }
-                    }
-                    
-                    NavigationLink(destination: BlockedUsersView()) {
-                        HStack {
-                            Image(systemName: "person.crop.circle.badge.xmark")
-                                .foregroundColor(.red)
-                            Text("Blocked Users")
-                        }
-                    }
-                }
-                
-                Section(header: Text("Security Alerts")) {
-                    if let settings = settings,
-                       let lastLogin = settings.lastLoginDate {
-                        HStack {
-                            Image(systemName: "clock.fill")
-                                .foregroundColor(.gray)
-                            VStack(alignment: .leading) {
-                                Text("Last Login")
-                                Text(formatDate(lastLogin))
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                    
-                    if let settings = settings {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(settings.failedLoginAttempts > 0 ? .red : .green)
-                            VStack(alignment: .leading) {
-                                Text("Failed Login Attempts")
-                                Text("\(settings.failedLoginAttempts)")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Security")
-            .navigationBarItems(
-                trailing: Button("Done") {
-                    dismiss()
-                }
+        ZStack {
+            // Arkaplan gradyanı
+            LinearGradient(
+                colors: [
+                    Color(.systemBackground),
+                    Color(.systemBackground).opacity(0.8),
+                    Color.blue.opacity(0.1),
+                    Color.purple.opacity(0.1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
             )
+            .ignoresSafeArea()
+            
+            VStack(spacing: Constants.Design.defaultSpacing) {
+                Text("Güvenlik")
+                    .font(.system(size: Constants.FontSizes.title1, weight: .bold))
+                    .foregroundStyle(Constants.Design.mainGradient)
+                
+                VStack(spacing: Constants.Design.defaultSpacing) {
+                    // Mevcut Şifre
+                    VStack(alignment: .leading, spacing: Constants.Design.defaultPadding) {
+                        Text("Mevcut Şifre")
+                            .font(.headline)
+                            .foregroundStyle(Constants.Design.mainGradient)
+                        
+                        SecureField("Mevcut şifrenizi girin", text: $currentPassword)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocapitalization(.none)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    )
+                    
+                    // Yeni Şifre
+                    VStack(alignment: .leading, spacing: Constants.Design.defaultPadding) {
+                        Text("Yeni Şifre")
+                            .font(.headline)
+                            .foregroundStyle(Constants.Design.mainGradient)
+                        
+                        SecureField("Yeni şifrenizi girin", text: $newPassword)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocapitalization(.none)
+                        
+                        Text("Şifreniz en az 8 karakter uzunluğunda olmalıdır")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    )
+                    
+                    // Şifre Onayı
+                    VStack(alignment: .leading, spacing: Constants.Design.defaultPadding) {
+                        Text("Şifre Onayı")
+                            .font(.headline)
+                            .foregroundStyle(Constants.Design.mainGradient)
+                        
+                        SecureField("Yeni şifrenizi tekrar girin", text: $confirmPassword)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .autocapitalization(.none)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                            .fill(Color(.systemBackground))
+                            .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    )
+                }
+                .padding(.horizontal)
+                
+                Spacer()
+                
+                // Şifre Değiştir Butonu
+                Button(action: changePassword) {
+                    if isLoading {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Text("Şifre Değiştir")
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    }
+                }
+                .background(Constants.Design.mainGradient)
+                .cornerRadius(Constants.Design.cornerRadius)
+                .padding(.horizontal)
+                .disabled(isLoading)
+            }
+            .padding(.top, Constants.Design.defaultPadding)
         }
-        .onAppear {
-            loadSettings()
+        .alert("Hata", isPresented: $showAlert) {
+            Button("Tamam", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
         }
+        .navigationBarHidden(true)
     }
     
-    private func loadSettings() {
-        if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            settings = UserDefaultsManager.shared.getUserSettings(for: currentUser.username)
+    private func changePassword() {
+        guard !currentPassword.isEmpty else {
+            alertMessage = "Lütfen mevcut şifrenizi girin"
+            showAlert = true
+            return
         }
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        
+        guard !newPassword.isEmpty else {
+            alertMessage = "Lütfen yeni şifrenizi girin"
+            showAlert = true
+            return
+        }
+        
+        guard newPassword.count >= 8 else {
+            alertMessage = "Yeni şifreniz en az 8 karakter uzunluğunda olmalıdır"
+            showAlert = true
+            return
+        }
+        
+        guard newPassword == confirmPassword else {
+            alertMessage = "Şifreler eşleşmiyor"
+            showAlert = true
+            return
+        }
+        
+        isLoading = true
+        
+        if let username = UserDefaultsManager.shared.getCurrentUser()?.username {
+            if UserDefaultsManager.shared.validatePassword(username: username, password: currentPassword) {
+                UserDefaultsManager.shared.updatePassword(username: username, newPassword: newPassword)
+                dismiss()
+            } else {
+                alertMessage = "Mevcut şifreniz yanlış"
+                showAlert = true
+            }
+        }
+        
+        isLoading = false
     }
 }
 
 struct TwoFactorSetupView: View {
-    let isEnabled: Bool
     @Environment(\.dismiss) var dismiss
+    let username: String
     @State private var verificationCode = ""
     @State private var showAlert = false
     @State private var alertMessage = ""
     
     var body: some View {
-        Form {
-            Section(header: Text("Status")) {
-                HStack {
-                    Image(systemName: isEnabled ? "checkmark.shield.fill" : "xmark.shield.fill")
-                        .foregroundColor(isEnabled ? .green : .red)
-                    Text(isEnabled ? "Two-Factor Authentication is enabled" : "Two-Factor Authentication is disabled")
+        NavigationView {
+            Form {
+                Section(header: Text("İki Faktörlü Kimlik Doğrulama Kurulumu")) {
+                    Text("Güvenliğiniz için telefonunuza bir doğrulama kodu gönderdik.")
+                        .padding(.vertical)
+                    
+                    TextField("Doğrulama Kodu", text: $verificationCode)
+                        .keyboardType(.numberPad)
                 }
-            }
-            
-            if !isEnabled {
-                Section(header: Text("Setup")) {
-                    Text("To enable two-factor authentication, you'll receive a verification code via SMS.")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    
-                    Button(action: requestVerificationCode) {
-                        Text("Send Verification Code")
-                    }
-                    
-                    SecureField("Enter Verification Code", text: $verificationCode)
-                    
+                
+                Section {
                     Button(action: verifyCode) {
-                        Text("Enable Two-Factor Authentication")
-                    }
-                    .disabled(verificationCode.isEmpty)
-                }
-            } else {
-                Section(header: Text("Disable")) {
-                    Text("Disabling two-factor authentication will make your account less secure.")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                    
-                    Button(action: disableTwoFactor) {
-                        Text("Disable Two-Factor Authentication")
-                            .foregroundColor(.red)
+                        Text("Doğrula")
                     }
                 }
             }
+            .navigationTitle("2FA Kurulumu")
+            .navigationBarItems(
+                leading: Button("İptal") {
+                    UserDefaultsManager.shared.toggleTwoFactor(for: username)
+                    dismiss()
+                }
+            )
+            .alert("Hata", isPresented: $showAlert) {
+                Button("Tamam", role: .cancel) { }
+            } message: {
+                Text(alertMessage)
+            }
         }
-        .navigationTitle("Two-Factor Authentication")
-        .alert("Two-Factor Authentication", isPresented: $showAlert) {
-            Button("OK") { }
-        } message: {
-            Text(alertMessage)
-        }
-    }
-    
-    private func requestVerificationCode() {
-        // Implement SMS verification code sending
-        alertMessage = "Verification code sent to your phone"
-        showAlert = true
     }
     
     private func verifyCode() {
-        // Implement verification code validation
-        if verificationCode == "123456" { // Demo code
-            if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-                UserDefaultsManager.shared.toggleTwoFactor(for: currentUser.username)
-                alertMessage = "Two-Factor Authentication enabled successfully"
-            }
-        } else {
-            alertMessage = "Invalid verification code"
+        guard !verificationCode.isEmpty else {
+            alertMessage = "Lütfen doğrulama kodunu girin"
+            showAlert = true
+            return
         }
-        showAlert = true
-    }
-    
-    private func disableTwoFactor() {
-        if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            UserDefaultsManager.shared.toggleTwoFactor(for: currentUser.username)
-            alertMessage = "Two-Factor Authentication disabled"
+        
+        // Burada doğrulama kodu kontrolü yapılacak
+        // Şimdilik sadece boş olmadığını kontrol ediyoruz
+        if verificationCode.count == 6 {
+            dismiss()
+        } else {
+            alertMessage = "Geçersiz doğrulama kodu"
             showAlert = true
         }
     }
