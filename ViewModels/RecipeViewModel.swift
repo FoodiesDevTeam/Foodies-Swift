@@ -10,15 +10,15 @@ class RecipeViewModel: ObservableObject {
     
     func fetchRecipes() async {
         do {
-            recipes = try await supabaseService.fetchRecipes()
+            recipes = try await supabaseService.getRecipes()
         } catch {
             self.error = error
         }
     }
     
-    func fetchRecipe(id: String) async -> Recipe? {
+    func fetchRecipe(id: UUID) async -> Recipe? {
         do {
-            return try await supabaseService.fetchRecipe(id: id)
+            return try await supabaseService.getRecipeById(id: id)
         } catch {
             self.error = error
             return nil
@@ -27,7 +27,7 @@ class RecipeViewModel: ObservableObject {
     
     func createRecipe(_ recipe: Recipe) async {
         do {
-            let newRecipe = try await supabaseService.createRecipe(recipe)
+            let newRecipe = try await supabaseService.createRecipe(recipe: recipe)
             recipes.append(newRecipe)
         } catch {
             self.error = error
@@ -36,7 +36,7 @@ class RecipeViewModel: ObservableObject {
     
     func updateRecipe(_ recipe: Recipe) async {
         do {
-            let updatedRecipe = try await supabaseService.updateRecipe(recipe)
+            let updatedRecipe = try await supabaseService.updateRecipe(recipe: recipe)
             if let index = recipes.firstIndex(where: { $0.id == recipe.id }) {
                 recipes[index] = updatedRecipe
             }
@@ -45,7 +45,7 @@ class RecipeViewModel: ObservableObject {
         }
     }
     
-    func deleteRecipe(id: String) async {
+    func deleteRecipe(id: UUID) async {
         do {
             try await supabaseService.deleteRecipe(id: id)
             recipes.removeAll { $0.id == id }

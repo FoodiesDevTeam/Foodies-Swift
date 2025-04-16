@@ -64,7 +64,7 @@ struct AppPreferencesView: View {
                 .font(.headline)
                 .foregroundStyle(Constants.Design.mainGradient)
             
-            FlowLayout(
+            CustomFlowLayout(
                 items: foodPreferencesList,
                 isSelected: { selectedFoodPreferences.contains($0) },
                 onTap: { item in
@@ -103,7 +103,7 @@ struct AppPreferencesView: View {
                 .font(.headline)
                 .foregroundStyle(Constants.Design.mainGradient)
             
-            FlowLayout(
+            CustomFlowLayout(
                 items: hobbiesList,
                 isSelected: { selectedHobbies.contains($0) },
                 onTap: { item in
@@ -265,12 +265,14 @@ struct PreferenceChip: View {
     }
 }
 
-struct FlowLayout<Data: RandomAccessCollection>: View where Data.Element: Hashable {
+struct CustomFlowLayout<Data: RandomAccessCollection>: View where Data.Element: Hashable {
     let items: Data
     let isSelected: (Data.Element) -> Bool
     let onTap: (Data.Element) -> Void
     let spacing: CGFloat
     let content: (Data.Element) -> AnyView
+    
+    @State private var totalHeight: CGFloat = .zero
     
     init(
         items: Data,
@@ -290,36 +292,44 @@ struct FlowLayout<Data: RandomAccessCollection>: View where Data.Element: Hashab
         GeometryReader { geometry in
             self.generateContent(in: geometry)
         }
+        .frame(height: totalHeight)
     }
     
     private func generateContent(in geometry: GeometryProxy) -> some View {
         var width = CGFloat.zero
         var height = CGFloat.zero
+        var lastX = CGFloat.zero
         
         return ZStack(alignment: .topLeading) {
-            ForEach(Array(items), id: \.self) { item in
+            ForEach(Array(items.enumerated()), id: \.element) { index, item in
                 content(item)
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 2)
+                    .background(
+                        GeometryReader { geo -> Color in
+                            DispatchQueue.main.async {
+                                if geo.frame(in: .local).maxX > geometry.size.width {
+                                    width = 0
+                                    height += geo.size.height + spacing
+                                }
+                                
+                                if index == 0 {
+                                    width = 0
+                                    height = 0
+                                }
+                                
+                                width += geo.size.width + spacing
+                                lastX = geo.frame(in: .local).maxX
+                                
+                                if index == items.count - 1 {
+                                    totalHeight = height + geo.size.height
+                                }
+                            }
+                            return Color.clear
+                        }
+                    )
+                    .offset(x: width - (lastX + spacing), y: height)
                     .onTapGesture { onTap(item) }
-                    .alignmentGuide(.leading) { dimension in
-                        if abs(width - dimension.width) > geometry.size.width {
-                            width = 0
-                            height -= dimension.height + spacing
-                        }
-                        let result = width
-                        if item == items.last {
-                            width = 0
-                        } else {
-                            width -= dimension.width + spacing
-                        }
-                        return result
-                    }
-                    .alignmentGuide(.top) { _ in
-                        let result = height
-                        if item == items.last {
-                            height = 0
-                        }
-                        return result
-                    }
             }
         }
     }
@@ -327,6 +337,6 @@ struct FlowLayout<Data: RandomAccessCollection>: View where Data.Element: Hashab
 
 struct AppPreferencesView_Previews: PreviewProvider {
     static var previews: some View {
-        AppPreferencesView(onboardingState: .preferences)
+        AppPreferencesView(onboardingState: .matchingPreferences)
     }
 }

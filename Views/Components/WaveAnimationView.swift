@@ -9,9 +9,9 @@ struct WaveAnimationView: View {
     @State private var amplitude3: CGFloat = 15
     
     private let colors: [Color] = [
-        Color(hex: "#4A90E2"),  // Mavi
-        Color(hex: "#8E44AD"),  // Mor
-        Color(hex: "#FF5E99")   // Pembe
+        Color(hexCode: "#4A90E2"),  // Mavi
+        Color(hexCode: "#8E44AD"),  // Mor
+        Color(hexCode: "#FF5E99")   // Pembe
     ]
     
     var body: some View {
@@ -96,8 +96,8 @@ struct WaveLine: Shape {
 }
 
 extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+    init(hexCode: String) {
+        let hex = hexCode.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
         Scanner(string: hex).scanHexInt64(&int)
         let a, r, g, b: UInt64

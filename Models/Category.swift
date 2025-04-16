@@ -1,7 +1,7 @@
 import Foundation
 
 struct Category: Codable, Identifiable {
-    let id: String
+    let id: UUID
     let name: String
     let description: String?
     let imageURL: String?
@@ -14,4 +14,10 @@ struct Category: Codable, Identifiable {
         case imageURL = "image_url"
         case createdAt = "created_at"
     }
+    
+    static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
 } 

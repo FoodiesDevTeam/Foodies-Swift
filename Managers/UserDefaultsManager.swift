@@ -12,7 +12,6 @@ class UserDefaultsManager {
     
     private init() {}
     
-    // MARK: - User Models
     struct User: Codable {
         let id: String
         let username: String

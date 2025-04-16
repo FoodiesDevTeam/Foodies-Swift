@@ -11,19 +11,16 @@ struct SignInView: View {
     
     var body: some View {
         VStack(spacing: 30) {
-            // Logo
             Image("FoodiesLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 150, height: 150)
             
-            // Title
             Text("Foodies App'e Hoş Geldiniz")
                 .font(.title)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
             
-            // Login Form
             VStack(spacing: 20) {
                 TextField("E-posta", text: $email)
                     .textContentType(.emailAddress)

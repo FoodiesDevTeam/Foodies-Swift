@@ -13,7 +13,6 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             List {
-                // Language Selection
                 Section(header: Text(LanguageManager.shared.localizedString("language"))) {
                     Picker("", selection: $selectedLanguage) {
                         Text(LanguageManager.shared.localizedString("english"))
@@ -27,7 +26,6 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Logout Button
                 Section {
                     Button(action: onLogout) {
                         HStack {

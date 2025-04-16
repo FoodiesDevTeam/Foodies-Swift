@@ -6,20 +6,19 @@ struct ProfileView: View {
     @State private var showEditProfile = false
     @State private var showPhotosAndBio = false
     @State private var selectedItem: PhotosPickerItem?
-    @State private var profileImage: UIImage?
-    @State private var user: UserDefaultsManager.User?
     @State private var navigateToSignIn = false
     @State private var viewRefreshTrigger = false
+    @StateObject private var viewModel = ProfileViewModel()
     @Environment(\.presentationMode) var presentationMode
     
     // MARK: - Computed Properties
     private var userFullName: String {
-        guard let info = user?.personalInfo else { return "" }
+        guard let info = viewModel.user?.personalInfo else { return "" }
         return "\(info.name) \(info.surname)"
     }
     
     private var userAge: String {
-        guard let info = user?.personalInfo else { return "" }
+        guard let info = viewModel.user?.personalInfo else { return "" }
         let calendar = Calendar.current
         let ageComponents = calendar.dateComponents([.year], from: info.birthDate, to: Date())
         guard let age = ageComponents.year else { return "" }
@@ -27,7 +26,7 @@ struct ProfileView: View {
     }
     
     private var userLocation: String {
-        guard let info = user?.personalInfo,
+        guard let info = viewModel.user?.personalInfo,
               let city = info.city else { return "" }
         return "\(city), TR"
     }
@@ -40,6 +39,16 @@ struct ProfileView: View {
                 VStack(spacing: 20) {
                     profileInfoView
                     infoListView
+                    
+                    // Yemek Tercihleri ve Hobiler
+                    if !viewModel.userFoodPreferences.isEmpty || !viewModel.userHobbies.isEmpty {
+                        preferencesView
+                    }
+                    
+                    // Eşleşme Tercihleri
+                    if let matchingPrefs = viewModel.matchingPreferences {
+                        matchingPreferencesView(matchingPrefs)
+                    }
                 }
                 .padding(.top, 20)
             }
@@ -70,7 +79,7 @@ struct ProfileView: View {
             viewRefreshTrigger.toggle()
         }
         .onAppear {
-            loadUserData()
+            viewModel.loadUserData()
         }
     }
     
@@ -117,14 +126,14 @@ struct ProfileView: View {
     private var profilePhotoView: some View {
         VStack {
             Group {
-                if let profileImage = profileImage {
+                if let profileImage = viewModel.profileImage {
                     Image(uiImage: profileImage)
                         .resizable()
                         .scaledToFill()
                         .frame(width: 120, height: 120)
                         .clipShape(Circle())
                         .padding(.top, 20)
-                } else if let photos = user?.photos,
+                } else if let photos = viewModel.user?.photos,
                           let photoData = photos.first,
                           let uiImage = UIImage(data: photoData) {
                     Image(uiImage: uiImage)
@@ -141,8 +150,14 @@ struct ProfileView: View {
                 }
             }
             
+            PhotosPicker(selection: $selectedItem, matching: .images) {
+                Text("Fotoğraf Seç")
+                    .font(.subheadline)
+                    .foregroundColor(.blue)
+            }
+            
             Button(action: { showPhotosAndBio = true }) {
-                Text("Fotoğraf ve Bio Düzenle")
+                Text("Bio Düzenle")
                     .font(.subheadline)
                     .foregroundColor(.blue)
             }
@@ -156,7 +171,7 @@ struct ProfileView: View {
                 .font(.title2)
                 .bold()
             
-            if let occupation = user?.personalInfo?.occupation {
+            if let occupation = viewModel.user?.personalInfo?.occupation {
                 Text(occupation)
                     .font(.headline)
                     .foregroundColor(.gray)
@@ -171,7 +186,7 @@ struct ProfileView: View {
                 .font(.subheadline)
                 .foregroundColor(.gray)
             
-            if let bio = user?.bio {
+            if let bio = viewModel.user?.bio {
                 Text(bio)
                     .font(.body)
                     .foregroundColor(.black)
@@ -186,16 +201,16 @@ struct ProfileView: View {
     private var infoListView: some View {
         VStack(spacing: 0) {
             infoRow(icon: "person", text: userFullName)
-            if let email = user?.email {
+            if let email = viewModel.user?.email {
                 infoRow(icon: "envelope", text: email)
             }
-            if let birthDate = user?.personalInfo?.birthDate {
+            if let birthDate = viewModel.user?.personalInfo?.birthDate {
                 infoRow(icon: "calendar", text: formatDate(birthDate))
             }
-            if let city = user?.personalInfo?.city {
+            if let city = viewModel.user?.personalInfo?.city {
                 infoRow(icon: "mappin.and.ellipse", text: city)
             }
-            if let occupation = user?.personalInfo?.occupation {
+            if let occupation = viewModel.user?.personalInfo?.occupation {
                 infoRow(icon: "briefcase", text: occupation, isLast: true)
             }
         }
@@ -225,7 +240,7 @@ struct ProfileView: View {
     
     // MARK: - Helper Methods
     private func handleLogout() {
-        if let username = user?.username {
+        if let username = viewModel.user?.username {
             UserDefaultsManager.shared.removeUser(username: username)
             NotificationCenter.default.post(name: NSNotification.Name("UserDidLogout"), object: nil)
         }
@@ -234,41 +249,164 @@ struct ProfileView: View {
     
     private func handleProfileUpdate() {
         showEditProfile = false
-        loadUserData()
+        viewModel.loadUserData()
     }
     
     private func handlePhotoSelection(_ item: PhotosPickerItem?) {
         Task {
             if let data = try? await item?.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
-                profileImage = image
-                updateProfilePhoto(data)
+                viewModel.updateProfilePhoto(data)
             }
         }
     }
     
-    private func loadUserData() {
-        if let username = UserDefaultsManager.shared.getCurrentUser()?.username {
-            user = UserDefaultsManager.shared.getUser(username: username)
-        }
-    }
-    
-    private func updateProfilePhoto(_ photoData: Data) {
-        guard let username = user?.username else { return }
-        var photos = user?.photos ?? []
-        if !photos.isEmpty {
-            photos[0] = photoData
-        } else {
-            photos.append(photoData)
-        }
-        UserDefaultsManager.shared.updateUserPhotos(username: username, photos: photos)
-        loadUserData()
-    }
-    
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.locale = Locale(identifier: LanguageManager.shared.currentLanguage == .english ? "en_US" : "tr_TR")
-        return formatter.string(from: date)
+        return viewModel.formatDate(date)
+    }
+    
+    // MARK: - Preferences Views
+    private var preferencesView: some View {
+        VStack(spacing: 0) {
+            // Yemek Tercihleri
+            if !viewModel.userFoodPreferences.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Yemek Zevkleri")
+                        .font(.headline)
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(viewModel.userFoodPreferences) { food in
+                                foodPreferenceTag(food.name)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.bottom, 10)
+                }
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(12)
+                .padding(.horizontal)
+            }
+            
+            // Hobiler
+            if !viewModel.userHobbies.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Hobiler")
+                        .font(.headline)
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                    
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(viewModel.userHobbies) { hobby in
+                                hobbyTag(hobby.name)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.bottom, 10)
+                }
+                .background(Color(UIColor.systemBackground))
+                .cornerRadius(12)
+                .padding(.horizontal)
+                .padding(.top, 10)
+            }
+        }
+    }
+    
+    private func foodPreferenceTag(_ name: String) -> some View {
+        Text(name)
+            .font(.subheadline)
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [.pink, .purple]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(20)
+    }
+    
+    private func hobbyTag(_ name: String) -> some View {
+        Text(name)
+            .font(.subheadline)
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                LinearGradient(
+                    gradient: Gradient(colors: [.blue, .purple]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(20)
+    }
+    
+    // Eşleşme Tercihleri Görünümü
+    private func matchingPreferencesView(_ preferences: UserDefaultsManager.MatchingPreferences) -> some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Eşleşme Tercihleri")
+                .font(.headline)
+                .padding(.horizontal)
+                .padding(.top, 10)
+            
+            VStack(spacing: 10) {
+                preferenceRow(title: "Sigara Kullanımı", value: preferenceOptionText(preferences.smokingPreference))
+                preferenceRow(title: "Alkol Kullanımı", value: preferenceOptionText(preferences.drinkingPreference))
+                preferenceRow(title: "Eşleşme Amacı", value: matchingPurposeText(preferences.purpose))
+                preferenceRow(title: "Tercih Edilen Cinsiyet", value: genderText(preferences.preferredGender))
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 10)
+        }
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(12)
+        .shadow(radius: 1)
+        .padding(.horizontal)
+    }
+    
+    private func preferenceRow(title: String, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.gray)
+            Spacer()
+            Text(value)
+                .font(.subheadline)
+                .foregroundColor(.primary)
+        }
+        .padding(.vertical, 5)
+    }
+    
+    private func preferenceOptionText(_ option: UserDefaultsManager.PreferenceOption) -> String {
+        switch option {
+        case .yes: return "Evet"
+        case .no: return "Hayır"
+        case .dontCare: return "Farketmez"
+        }
+    }
+    
+    private func matchingPurposeText(_ purpose: UserDefaultsManager.MatchingPurpose) -> String {
+        switch purpose {
+        case .friendship: return "Arkadaşlık"
+        case .dating: return "Flört"
+        case .business: return "Networking"
+        case .diningCompanion: return "Yemek Arkadaşı"
+        }
+    }
+    
+    private func genderText(_ gender: UserDefaultsManager.Gender) -> String {
+        switch gender {
+        case .male: return "Erkek"
+        case .female: return "Kadın"
+        case .any: return "Farketmez"
+        }
     }
 }

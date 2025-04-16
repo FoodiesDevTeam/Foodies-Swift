@@ -45,10 +45,25 @@ class AuthViewModel: ObservableObject {
             await MainActor.run {
                 self.currentUser = user
                 self.isAuthenticated = true
+                self.errorMessage = nil // Başarılı kayıt durumunda hata mesajını temizle
             }
         } catch {
             await MainActor.run {
                 self.error = error
+                
+                // Özel hata mesajları için hata tipini kontrol et
+                if let supabaseError = error as? SupabaseError {
+                    switch supabaseError {
+                    case .userAlreadyExists:
+                        self.errorMessage = "Bu e-posta adresi zaten kayıtlı. Lütfen giriş yapın veya başka bir e-posta adresi kullanın."
+                    case .signUpFailed:
+                        self.errorMessage = "Kayıt işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin."
+                    default:
+                        self.errorMessage = "Bir hata oluştu: \(error.localizedDescription)"
+                    }
+                } else {
+                    self.errorMessage = "Bir hata oluştu: \(error.localizedDescription)"
+                }
             }
             throw error
         }

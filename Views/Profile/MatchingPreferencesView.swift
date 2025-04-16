@@ -9,7 +9,7 @@ struct MatchingPreferencesView: View {
     @State private var isLoading = false
     @State private var showAlert = false
     @State private var alertMessage = ""
-    @State private var navigateToMainApp = false
+    @State private var navigateToPhotosAndBio = false
     
     let onboardingState: OnboardingState
     var onSave: (() -> Void)?
@@ -21,7 +21,7 @@ struct MatchingPreferencesView: View {
     
     var body: some View {
         VStack(spacing: Constants.Design.defaultSpacing) {
-            // Progress Bar
+           
             ProgressView(value: onboardingState.progress)
                 .progressViewStyle(.linear)
                 .tint(Color.purple)
@@ -87,7 +87,7 @@ struct MatchingPreferencesView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
-                    Text("Kaydet ve Bitir")
+                    Text("İleri")
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -124,8 +124,8 @@ struct MatchingPreferencesView: View {
         } message: {
             Text(alertMessage)
         }
-        .fullScreenCover(isPresented: $navigateToMainApp) {
-            MainTabView()
+        .fullScreenCover(isPresented: $navigateToPhotosAndBio) {
+            PhotosAndBioView(onboardingState: .photoBio)
         }
     }
     
@@ -141,8 +141,15 @@ struct MatchingPreferencesView: View {
             )
             
             UserDefaultsManager.shared.updateUserMatchingPreferences(username: username, matchingPreferences: preferences)
-            onSave?()
+            
+            if let onSave = onSave {
+                onSave()
+            } else {
+                navigateToPhotosAndBio = true
+            }
         } else {
+            print("❌ getCurrentUser() nil döndü")
+            print("🔍 UserDefaults'taki currentUserKey:", UserDefaults.standard.string(forKey: "currentUser") ?? "nil")
             alertMessage = "Kullanıcı bilgisi bulunamadı"
             showAlert = true
         }

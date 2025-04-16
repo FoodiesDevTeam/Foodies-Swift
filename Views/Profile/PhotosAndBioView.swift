@@ -15,7 +15,7 @@ struct PhotosAndBioView: View {
     
     var body: some View {
         VStack(spacing: Constants.Design.defaultSpacing) {
-            // Progress Bar
+           
             ProgressView(value: onboardingState.progress)
                 .progressViewStyle(.linear)
                 .tint(Color.purple)
@@ -27,7 +27,7 @@ struct PhotosAndBioView: View {
             
             ScrollView {
                 VStack(spacing: Constants.Design.defaultSpacing) {
-                    // Fotoğraf Seçici
+                   
                     PhotosPicker(
                         selection: $selectedItems,
                         maxSelectionCount: 6,
@@ -43,7 +43,6 @@ struct PhotosAndBioView: View {
                                     .foregroundColor(.gray)
                             }
                             
-                            // Seçilen fotoğrafları göster
                             LazyVGrid(columns: [
                                 GridItem(.flexible()),
                                 GridItem(.flexible()),

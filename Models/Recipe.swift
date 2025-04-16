@@ -1,17 +1,18 @@
 import Foundation
 
 struct Recipe: Codable, Identifiable {
-    let id: String
+    let id: UUID
     let title: String
     let description: String
     let ingredients: [String]
     let instructions: [String]
-    let cookingTime: Int
+    let cookTime: Int
+    let prepTime: Int
     let servings: Int
     let difficulty: String
     let imageURL: String?
-    let categoryId: String?
-    let userId: String
+    let categoryId: UUID?
+    let userId: UUID
     let createdAt: Date
     let updatedAt: Date
     
@@ -21,7 +22,8 @@ struct Recipe: Codable, Identifiable {
         case description
         case ingredients
         case instructions
-        case cookingTime = "cooking_time"
+        case cookTime = "cook_time"
+        case prepTime = "prep_time"
         case servings
         case difficulty
         case imageURL = "image_url"
@@ -31,20 +33,27 @@ struct Recipe: Codable, Identifiable {
         case updatedAt = "updated_at"
     }
     
+    static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+    
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         
-        id = try container.decode(String.self, forKey: .id)
+        id = try container.decode(UUID.self, forKey: .id)
         title = try container.decode(String.self, forKey: .title)
         description = try container.decode(String.self, forKey: .description)
         ingredients = try container.decode([String].self, forKey: .ingredients)
         instructions = try container.decode([String].self, forKey: .instructions)
-        cookingTime = try container.decode(Int.self, forKey: .cookingTime)
+        cookTime = try container.decode(Int.self, forKey: .cookTime)
+        prepTime = try container.decode(Int.self, forKey: .prepTime)
         servings = try container.decode(Int.self, forKey: .servings)
         difficulty = try container.decode(String.self, forKey: .difficulty)
         imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
-        categoryId = try container.decodeIfPresent(String.self, forKey: .categoryId)
-        userId = try container.decode(String.self, forKey: .userId)
+        categoryId = try container.decodeIfPresent(UUID.self, forKey: .categoryId)
+        userId = try container.decode(UUID.self, forKey: .userId)
         createdAt = try container.decode(Date.self, forKey: .createdAt)
         updatedAt = try container.decode(Date.self, forKey: .updatedAt)
     }
@@ -57,7 +66,8 @@ struct Recipe: Codable, Identifiable {
         try container.encode(description, forKey: .description)
         try container.encode(ingredients, forKey: .ingredients)
         try container.encode(instructions, forKey: .instructions)
-        try container.encode(cookingTime, forKey: .cookingTime)
+        try container.encode(cookTime, forKey: .cookTime)
+        try container.encode(prepTime, forKey: .prepTime)
         try container.encode(servings, forKey: .servings)
         try container.encode(difficulty, forKey: .difficulty)
         try container.encodeIfPresent(imageURL, forKey: .imageURL)

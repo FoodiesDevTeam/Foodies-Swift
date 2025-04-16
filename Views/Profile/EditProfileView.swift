@@ -163,7 +163,7 @@ struct EditProfileView: View {
                 photos: photoData.map { [$0] } ?? [],
                 bio: bio
             )
-            dismiss()
+        dismiss()
         }
         
         isLoading = false

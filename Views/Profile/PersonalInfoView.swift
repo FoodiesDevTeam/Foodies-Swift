@@ -33,7 +33,7 @@ struct PersonalInfoView: View {
     
     var body: some View {
         VStack(spacing: Constants.Design.defaultSpacing) {
-            // Progress Bar
+          
             ProgressView(value: onboardingState.progress)
                 .progressViewStyle(.linear)
                 .tint(Color.purple)
@@ -136,9 +136,7 @@ struct PersonalInfoView: View {
             .disabled(isLoading)
             .padding()
             
-            NavigationLink(destination: AppPreferencesView(onboardingState: .preferences), isActive: $navigateToPreferences) {
-                EmptyView()
-            }
+            // NavigationLink kaldırıldı - artık OnboardingView akışını kullanıyoruz
         }
         .padding(.top, Constants.Design.defaultPadding)
         .background(
