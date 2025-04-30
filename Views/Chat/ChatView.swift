@@ -1,24 +1,15 @@
 import SwiftUI
 
 struct ChatView: View {
+    @StateObject private var viewModel = ChatViewModel()
     @State private var searchText = ""
     @State private var isSearching = false
-    @State private var chats: [UserDefaultsManager.Message] = []
     @State private var pulsate = false
-    
-    var filteredChats: [UserDefaultsManager.Message] {
-        if searchText.isEmpty {
-            return chats
-        }
-        return chats.filter { chat in
-            chat.senderName.localizedCaseInsensitiveContains(searchText) ||
-            chat.content.localizedCaseInsensitiveContains(searchText)
-        }
-    }
+    @State private var activeMatches: [UserDefaultsManager.Match] = []
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header with animation
+            // Header
             ZStack {
                 // Header background
                 LinearGradient(
@@ -26,21 +17,15 @@ struct ChatView: View {
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-                .frame(height: 120)
+                .frame(height: 100)
+                .edgesIgnoringSafeArea(.top)
                 
-                VStack {
+                // Header Content
+                VStack(spacing: 0) {
                     HStack {
-                        Button(action: {
-                            // Back action
-                        }) {
-                            Image(systemName: "chevron.left")
-                                .foregroundColor(.white)
-                                .font(.system(size: 20))
-                        }
-                        
                         Spacer()
                         
-                        Text("Mesajlar")
+                        Text(LanguageManager.shared.localizedString("Messages"))
                             .font(.title2)
                             .bold()
                             .foregroundColor(.white)
@@ -58,80 +43,76 @@ struct ChatView: View {
                         }
                     }
                     .padding(.horizontal)
-                    .padding(.top, 60)
-                    
-                    if isSearching {
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundColor(.gray)
-                            TextField("Mesajlarda ara...", text: $searchText)
-                                .textFieldStyle(PlainTextFieldStyle())
-                                .autocapitalization(.none)
-                        }
-                        .padding(8)
-                        .background(Color.white)
-                        .cornerRadius(8)
-                        .padding(.horizontal)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                    }
+                    .padding(.top, 50)
                 }
-            }
-            .offset(y: pulsate ? -10 : 0)
-            .animation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsate)
-            .onAppear {
-                self.pulsate.toggle()
             }
             
             // Content
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Recent Label
-                    HStack {
-                        Text("Son Mesajlar")
-                            .font(.headline)
-                            .foregroundColor(.black)
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Color.white.opacity(0.7))
-                    
-                    // Chat List
-                    LazyVStack(spacing: 0) {
-                        ForEach(filteredChats) { chat in
-                            NavigationLink(destination: ChatDetailView(chat: chat)) {
-                                ChatRow(chat: chat)
-                            }
-                            Divider()
-                                .padding(.leading)
-                        }
-                    }
-                    .background(Color.white.opacity(0.7))
+            if activeMatches.isEmpty {
+                VStack(spacing: 20) {
+                    Image(systemName: "message.slash")
+                        .font(.system(size: 50))
+                        .foregroundColor(.gray)
+                    Text("Henüz aktif eşleşmeniz yok")
+                        .font(.headline)
+                        .foregroundColor(.gray)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.white)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Recent Label
+                        HStack {
+                            Text("Aktif Eşleşmeler")
+                                .font(.headline)
+                                .foregroundColor(.black)
+                            Spacer()
+                        }
+                        .padding()
+                        .background(Color.white.opacity(0.7))
+                        
+                        // Chat List
+                        LazyVStack(spacing: 0) {
+                            ForEach(activeMatches) { match in
+                                if let currentUser = UserDefaultsManager.shared.getCurrentUser(),
+                                   let partnerUsername = UserDefaultsManager.shared.getMatchPartner(for: currentUser.username, in: match),
+                                   let partnerUser = UserDefaultsManager.shared.getUser(username: partnerUsername) {
+                                    NavigationLink(destination: ChatDetailView(matchedUser: partnerUser, viewModel: viewModel)) {
+                                        ChatRow(match: match, partnerUser: partnerUser)
+                                    }
+                                    Divider()
+                                        .padding(.leading)
+                                }
+                            }
+                        }
+                        .background(Color.white.opacity(0.7))
+                    }
+                }
+                .background(Color.white)
             }
-            .background(Color.white)
         }
         .edgesIgnoringSafeArea(.top)
         .onAppear {
-            loadChats()
+            loadActiveMatches()
         }
     }
     
-    private func loadChats() {
+    private func loadActiveMatches() {
         if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            let filter = UserDefaultsManager.MessageFilter(userId: currentUser.username)
-            chats = UserDefaultsManager.shared.getMessages(filter: filter)
-                .sorted { $0.timestamp > $1.timestamp }
+            activeMatches = UserDefaultsManager.shared.getActiveMatches(for: currentUser.username)
         }
     }
 }
 
 struct ChatRow: View {
-    let chat: UserDefaultsManager.Message
+    let match: UserDefaultsManager.Match
+    let partnerUser: UserDefaultsManager.User
     
     var body: some View {
         HStack(spacing: 12) {
             // Profile Image
-            if let photoData = chat.senderPhotoData,
+            if let photoData = partnerUser.photos?.first,
                let uiImage = UIImage(data: photoData) {
                 Image(uiImage: uiImage)
                     .resizable()
@@ -143,7 +124,7 @@ struct ChatRow: View {
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: 50, height: 50)
                     .overlay(
-                        Text(chat.senderName.prefix(1))
+                        Text(partnerUser.personalInfo?.name.prefix(1) ?? partnerUser.username.prefix(1))
                             .font(.title2)
                             .foregroundColor(.gray)
                     )
@@ -151,28 +132,19 @@ struct ChatRow: View {
             
             // Chat Info
             VStack(alignment: .leading, spacing: 4) {
-                Text(chat.senderName)
+                Text(partnerUser.personalInfo?.name ?? partnerUser.username)
                     .font(.headline)
-                Text(chat.content)
+                Text("Eşleşme tarihi: \(formatDate(match.timestamp))")
                     .font(.subheadline)
                     .foregroundColor(.gray)
-                    .lineLimit(1)
             }
             
             Spacer()
             
-            // Time and Unread Count
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(formatDate(chat.timestamp))
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                
-                if !chat.isRead {
-                    Circle()
-                        .fill(Color.blue)
-                        .frame(width: 10, height: 10)
-                }
-            }
+            // Time
+            Text(formatDate(match.timestamp))
+                .font(.caption)
+                .foregroundColor(.gray)
         }
         .padding()
         .background(Color.white)
@@ -180,15 +152,16 @@ struct ChatRow: View {
     
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
+        formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
     }
 }
 
 struct ChatDetailView: View {
-    let chat: UserDefaultsManager.Message
+    let matchedUser: UserDefaultsManager.User
+    @ObservedObject var viewModel: ChatViewModel
     @State private var messageText = ""
-    @State private var messages: [UserDefaultsManager.Message] = []
     @State private var pulsate = false
     
     var body: some View {
@@ -205,7 +178,7 @@ struct ChatDetailView: View {
                 VStack {
                     HStack {
                         // Profile Image
-                        if let photoData = chat.senderPhotoData,
+                        if let photoData = matchedUser.photos?.first,
                            let uiImage = UIImage(data: photoData) {
                             Image(uiImage: uiImage)
                                 .resizable()
@@ -217,13 +190,13 @@ struct ChatDetailView: View {
                                 .fill(Color.gray.opacity(0.3))
                                 .frame(width: 40, height: 40)
                                 .overlay(
-                                    Text(chat.senderName.prefix(1))
+                                    Text(matchedUser.personalInfo?.name.prefix(1) ?? matchedUser.username.prefix(1))
                                         .font(.title3)
                                         .foregroundColor(.gray)
                                 )
                         }
                         
-                        Text(chat.senderName)
+                        Text(matchedUser.personalInfo?.name ?? matchedUser.username)
                             .font(.headline)
                             .foregroundColor(.white)
                         
@@ -237,7 +210,7 @@ struct ChatDetailView: View {
             // Messages
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(messages) { message in
+                    ForEach(viewModel.messages) { message in
                         MessageBubble(message: message)
                     }
                 }
@@ -264,25 +237,19 @@ struct ChatDetailView: View {
         }
         .edgesIgnoringSafeArea(.top)
         .onAppear {
-            loadMessages()
-        }
-    }
-    
-    private func loadMessages() {
-        if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            messages = UserDefaultsManager.shared.getConversation(between: currentUser.username, and: chat.senderId)
+            // Mesajı okundu olarak işaretle
+            viewModel.markMessageAsRead(viewModel.messages.last!)
         }
     }
     
     private func sendMessage() {
         if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            UserDefaultsManager.shared.sendMessage(
+            viewModel.sendMessage(
                 senderId: currentUser.username,
-                receiverId: chat.senderId,
+                receiverId: matchedUser.username,
                 content: messageText
             )
             messageText = ""
-            loadMessages()
         }
     }
 }
@@ -309,5 +276,11 @@ struct MessageBubble: View {
             
             if !isCurrentUser { Spacer() }
         }
+    }
+}
+
+struct ChatView_Previews: PreviewProvider {
+    static var previews: some View {
+        ChatView()
     }
 }

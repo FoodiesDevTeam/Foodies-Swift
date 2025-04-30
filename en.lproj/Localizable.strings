@@ -1,0 +1,206 @@
+// MARK: - General
+"app_name" = "Foodies";
+"ok" = "OK";
+"cancel" = "Cancel";
+"save" = "Save";
+"delete" = "Delete";
+"edit" = "Edit";
+"close" = "Close";
+"back" = "Back";
+"next" = "Next";
+"done" = "Done";
+"loading" = "Loading...";
+"error" = "Error";
+"success" = "Success";
+"warning" = "Warning";
+"info" = "Information";
+
+// MARK: - Authentication
+"login" = "Login";
+"signup" = "Sign Up";
+"logout" = "Logout";
+"email" = "Email";
+"password" = "Password";
+"confirm_password" = "Confirm Password";
+"forgot_password" = "Forgot Password?";
+"reset_password" = "Reset Password";
+"login_error" = "Login Error";
+"signup_error" = "Sign Up Error";
+"password_reset_sent" = "Password reset email sent";
+"invalid_email" = "Invalid email format";
+"password_too_short" = "Password must be at least 6 characters";
+"passwords_dont_match" = "Passwords don't match";
+
+// MARK: - Profile
+"profile" = "Profile";
+"edit_profile" = "Edit Profile";
+"personal_info" = "Personal Information";
+"name" = "Name";
+"surname" = "Surname";
+"birth_date" = "Birth Date";
+"phone_number" = "Phone Number";
+"city" = "City";
+"occupation" = "Occupation";
+"bio" = "Bio";
+"photos" = "Photos";
+"add_photo" = "Select Photo";
+"remove_photo" = "Remove Photo";
+"edit_bio" = "Edit Bio";
+"profile_years_old_format" = "%d years old";
+"profile_location_format" = "%@, TR";
+"gender" = "Gender";
+"male" = "Male";
+"female" = "Female";
+"other" = "Other";
+
+// MARK: - Preferences
+"preferences" = "Preferences";
+"food_preferences" = "Food Preferences";
+"hobbies" = "Hobbies";
+"smoking_status" = "Smoking Status";
+"drinking_status" = "Drinking Status";
+"smoking_yes" = "Yes";
+"smoking_no" = "No";
+"smoking_occasionally" = "Occasionally";
+"drinking_yes" = "Yes";
+"drinking_no" = "No";
+"drinking_socially" = "Socially";
+"matching_preferences" = "Matching Preferences";
+"preferred_gender" = "Preferred Gender";
+"matching_purpose" = "Matching Purpose";
+"purpose_dating" = "Dating";
+"purpose_friendship" = "Friendship";
+"purpose_dining" = "Dining Companion";
+"purpose_business" = "Business";
+
+// MARK: - Messages
+"messages" = "Messages";
+"new_message" = "New Message";
+"type_message" = "Type your message...";
+"send" = "Send";
+"no_messages" = "No messages";
+"search_messages" = "Search messages...";
+"message_sent" = "Message sent";
+"message_error" = "Error sending message";
+
+// MARK: - Meetings
+"meetings" = "Meetings";
+"new_meeting" = "New Meeting";
+"meeting_details" = "Meeting Details";
+"restaurant" = "Restaurant";
+"location" = "Location";
+"date" = "Date";
+"time" = "Time";
+"status" = "Status";
+"status_pending" = "Pending";
+"status_accepted" = "Accepted";
+"status_rejected" = "Rejected";
+"status_cancelled" = "Cancelled";
+"status_completed" = "Completed";
+"verification_code" = "Verification Code";
+"verify_meeting" = "Verify Meeting";
+"meeting_verified" = "Meeting Verified";
+"meeting_verification_error" = "Error verifying meeting";
+
+// MARK: - Ratings
+"ratings" = "Ratings";
+"rate_user" = "Rate User";
+"rating_type" = "Rating Type";
+"rating_score" = "Score";
+"rating_comment" = "Comment";
+"rating_punctuality" = "Punctuality";
+"rating_profile" = "Profile";
+"rating_experience" = "Experience";
+"submit_rating" = "Submit Rating";
+"rating_submitted" = "Rating Submitted";
+"rating_error" = "Error submitting rating";
+
+// MARK: - Settings
+"settings" = "Settings";
+"language" = "Language";
+"notifications" = "Notifications";
+"privacy" = "Privacy";
+"help" = "Help";
+"about" = "About";
+"version" = "Version";
+"terms" = "Terms of Service";
+"privacy_policy" = "Privacy Policy";
+"contact_us" = "Contact Us";
+"dark_mode" = "Dark Mode";
+"english" = "English";
+"turkish" = "Turkish";
+
+// MARK: - Errors
+"error_network" = "Network error. Please check your connection.";
+"error_server" = "Server error. Please try again later.";
+"error_unknown" = "An unknown error occurred.";
+"error_required_field" = "This field is required";
+"error_invalid_date" = "Invalid date format";
+"error_invalid_phone" = "Invalid phone number";
+"error_photo_upload" = "Error uploading photo";
+"error_profile_update" = "Error updating profile";
+"error_preferences_update" = "Error updating preferences";
+"error_meeting_create" = "Error creating meeting";
+"error_meeting_update" = "Error updating meeting";
+"error_rating_submit" = "Error submitting rating";
+"error_message_send" = "Error sending message";
+
+// MARK: - Match
+"best_match" = "Best Match";
+"close_to_you" = "Close To You";
+"no_more_matches" = "No more matches";
+"successful_match" = "Successful Match!";
+"later" = "Later";
+"schedule_meeting" = "Schedule Meeting";
+"meeting_date" = "Meeting date";
+"rating" = "Rating";
+"punctuality" = "Punctuality";
+"experience" = "Experience";
+"rate" = "Rate";
+"submit_rating" = "Submit rating";
+
+// MARK: - Tab Bar
+"tab_matches" = "Matches";
+"tab_messages" = "Messages";
+"tab_my_matches" = "My Matches";
+"tab_profile" = "Profile";
+
+// MARK: - Authentication Screens
+"welcome_to_foodies" = "Welcome to Foodies App";
+"email_placeholder" = "Email";
+"password_placeholder" = "Password";
+"confirm_password_placeholder" = "Confirm Password";
+"sign_in" = "Sign In";
+"sign_up" = "Sign Up";
+"no_account" = "Don't have an account? Sign up";
+"have_account" = "Already have an account? Sign in";
+"error_title" = "Error";
+"error_empty_fields" = "Please fill in all fields";
+"error_passwords_dont_match" = "Passwords don't match";
+"error_sign_in" = "Sign in failed: %@";
+"error_sign_up" = "An unexpected error occurred. Please try again.";
+"ok_button" = "OK";
+
+// MARK: - Matches
+"matches" = "Matches";
+"no_matches" = "No Matches Yet";
+"explore_message" = "Start exploring to find your perfect match!";
+"explore" = "Explore";
+"qr_operations" = "QR Code Operations";
+"qr_verification_message" = "Choose an action to verify your meeting";
+"create_qr" = "Create My QR Code";
+"scan_qr" = "Scan QR Code";
+"meeting_date" = "Meeting Date";
+"rate_match" = "Rate Match";
+"match_verified" = "Verified";
+"match_pending" = "Pending Verification";
+"match_cancelled" = "Cancelled";
+"match_completed" = "Completed";
+"match_rating_punctuality" = "Punctuality";
+"match_rating_experience" = "Experience";
+"match_rating_profile" = "Profile";
+"match_rating_comment" = "Add a comment (optional)";
+"match_rating_submit" = "Submit Rating";
+"match_rating_cancel" = "Cancel";
+"match_rating_success" = "Rating submitted successfully";
+"match_rating_error" = "Error submitting rating"; 

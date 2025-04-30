@@ -1,0 +1,206 @@
+// MARK: - Genel
+"app_name" = "Foodies";
+"ok" = "Tamam";
+"cancel" = "İptal";
+"save" = "Kaydet";
+"delete" = "Sil";
+"edit" = "Düzenle";
+"close" = "Kapat";
+"back" = "Geri";
+"next" = "İleri";
+"done" = "Tamam";
+"loading" = "Yükleniyor...";
+"error" = "Hata";
+"success" = "Başarılı";
+"warning" = "Uyarı";
+"info" = "Bilgi";
+
+// MARK: - Kimlik Doğrulama
+"login" = "Giriş Yap";
+"signup" = "Kayıt Ol";
+"logout" = "Çıkış Yap";
+"email" = "E-posta";
+"password" = "Şifre";
+"confirm_password" = "Şifreyi Onayla";
+"forgot_password" = "Şifremi Unuttum";
+"reset_password" = "Şifreyi Sıfırla";
+"login_error" = "Giriş Hatası";
+"signup_error" = "Kayıt Hatası";
+"password_reset_sent" = "Şifre sıfırlama e-postası gönderildi";
+"invalid_email" = "Geçersiz e-posta formatı";
+"password_too_short" = "Şifre en az 6 karakter olmalıdır";
+"passwords_dont_match" = "Şifreler eşleşmiyor";
+
+// MARK: - Profil
+"profile" = "Profil";
+"edit_profile" = "Profili Düzenle";
+"personal_info" = "Kişisel Bilgiler";
+"name" = "Ad";
+"surname" = "Soyad";
+"birth_date" = "Doğum Tarihi";
+"phone_number" = "Telefon Numarası";
+"city" = "Şehir";
+"occupation" = "Meslek";
+"bio" = "Hakkımda";
+"photos" = "Fotoğraflar";
+"add_photo" = "Fotoğraf Seç";
+"remove_photo" = "Fotoğrafı Sil";
+"edit_bio" = "Bio Düzenle";
+"profile_years_old_format" = "%d yaş";
+"profile_location_format" = "%@, TR";
+"gender" = "Cinsiyet";
+"male" = "Erkek";
+"female" = "Kadın";
+"other" = "Diğer";
+
+// MARK: - Tercihler
+"preferences" = "Tercihler";
+"food_preferences" = "Yemek Tercihleri";
+"hobbies" = "Hobiler";
+"smoking_status" = "Sigara Durumu";
+"drinking_status" = "Alkol Durumu";
+"smoking_yes" = "Evet";
+"smoking_no" = "Hayır";
+"smoking_occasionally" = "Ara Sıra";
+"drinking_yes" = "Evet";
+"drinking_no" = "Hayır";
+"drinking_socially" = "Sosyal Ortamlarda";
+"matching_preferences" = "Eşleşme Tercihleri";
+"preferred_gender" = "Tercih Edilen Cinsiyet";
+"matching_purpose" = "Eşleşme Amacı";
+"purpose_dating" = "Flört";
+"purpose_friendship" = "Arkadaşlık";
+"purpose_dining" = "Yemek Arkadaşlığı";
+"purpose_business" = "İş";
+
+// MARK: - Mesajlar
+"messages" = "Mesajlar";
+"new_message" = "Yeni Mesaj";
+"type_message" = "Mesajınızı yazın...";
+"send" = "Gönder";
+"no_messages" = "Mesaj yok";
+"search_messages" = "Mesajlarda ara...";
+"message_sent" = "Mesaj gönderildi";
+"message_error" = "Mesaj gönderme hatası";
+
+// MARK: - Buluşmalar
+"meetings" = "Buluşmalar";
+"new_meeting" = "Yeni Buluşma";
+"meeting_details" = "Buluşma Detayları";
+"restaurant" = "Restoran";
+"location" = "Konum";
+"date" = "Tarih";
+"time" = "Saat";
+"status" = "Durum";
+"status_pending" = "Bekliyor";
+"status_accepted" = "Kabul Edildi";
+"status_rejected" = "Reddedildi";
+"status_cancelled" = "İptal Edildi";
+"status_completed" = "Tamamlandı";
+"verification_code" = "Doğrulama Kodu";
+"verify_meeting" = "Buluşmayı Doğrula";
+"meeting_verified" = "Buluşma Doğrulandı";
+"meeting_verification_error" = "Buluşma doğrulama hatası";
+
+// MARK: - Değerlendirmeler
+"ratings" = "Değerlendirmeler";
+"rate_user" = "Kullanıcıyı Değerlendir";
+"rating_type" = "Değerlendirme Türü";
+"rating_score" = "Puan";
+"rating_comment" = "Yorum";
+"rating_punctuality" = "Dakiklik";
+"rating_profile" = "Profil";
+"rating_experience" = "Deneyim";
+"submit_rating" = "Değerlendirmeyi Gönder";
+"rating_submitted" = "Değerlendirme Gönderildi";
+"rating_error" = "Değerlendirme gönderme hatası";
+
+// MARK: - Ayarlar
+"settings" = "Ayarlar";
+"language" = "Dil";
+"notifications" = "Bildirimler";
+"privacy" = "Gizlilik";
+"help" = "Yardım";
+"about" = "Hakkında";
+"version" = "Versiyon";
+"terms" = "Kullanım Koşulları";
+"privacy_policy" = "Gizlilik Politikası";
+"contact_us" = "Bize Ulaşın";
+"dark_mode" = "Karanlık Mod";
+"english" = "İngilizce";
+"turkish" = "Türkçe";
+
+// MARK: - Hatalar
+"error_network" = "Ağ hatası. Lütfen bağlantınızı kontrol edin.";
+"error_server" = "Sunucu hatası. Lütfen daha sonra tekrar deneyin.";
+"error_unknown" = "Bilinmeyen bir hata oluştu.";
+"error_required_field" = "Bu alan zorunludur";
+"error_invalid_date" = "Geçersiz tarih formatı";
+"error_invalid_phone" = "Geçersiz telefon numarası";
+"error_photo_upload" = "Fotoğraf yükleme hatası";
+"error_profile_update" = "Profil güncelleme hatası";
+"error_preferences_update" = "Tercihler güncelleme hatası";
+"error_meeting_create" = "Buluşma oluşturma hatası";
+"error_meeting_update" = "Buluşma güncelleme hatası";
+"error_rating_submit" = "Değerlendirme gönderme hatası";
+"error_message_send" = "Mesaj gönderme hatası";
+
+// MARK: - Eşleşme
+"best_match" = "En İyi Eşleşme";
+"close_to_you" = "Yakınındakiler";
+"no_more_matches" = "Daha fazla eşleşme yok";
+"successful_match" = "Başarılı Eşleşme!";
+"later" = "Sonra";
+"schedule_meeting" = "Buluşma Ayarla";
+"meeting_date" = "Buluşma tarihi";
+"rating" = "Derecelendirme";
+"punctuality" = "Dakiklik";
+"experience" = "Deneyim";
+"rate" = "Derecelendirme yap";
+"submit_rating" = "Derecelendirme gönder";
+
+// MARK: - Tab Bar
+"tab_matches" = "Eşleşmeler";
+"tab_messages" = "Mesajlar";
+"tab_my_matches" = "Matchlerim";
+"tab_profile" = "Profil";
+
+// MARK: - Kimlik Doğrulama Ekranları
+"welcome_to_foodies" = "Foodies App'e Hoş Geldiniz";
+"email_placeholder" = "E-posta";
+"password_placeholder" = "Şifre";
+"confirm_password_placeholder" = "Şifre Tekrar";
+"sign_in" = "Giriş Yap";
+"sign_up" = "Kayıt Ol";
+"no_account" = "Hesabınız yok mu? Kayıt olun";
+"have_account" = "Hesabınız var mı? Giriş yapın";
+"error_title" = "Hata";
+"error_empty_fields" = "Lütfen tüm alanları doldurun";
+"error_passwords_dont_match" = "Şifreler eşleşmiyor";
+"error_sign_in" = "Giriş yapılamadı: %@";
+"error_sign_up" = "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.";
+"ok_button" = "Tamam";
+
+// MARK: - Eşleşmeler
+"matches" = "Matchlerim";
+"no_matches" = "Henüz Eşleşme Yok";
+"explore_message" = "Mükemmel eşleşmenizi bulmak için keşfetmeye başlayın!";
+"explore" = "Keşfet";
+"qr_operations" = "QR Kod İşlemleri";
+"qr_verification_message" = "Buluşmanızı doğrulamak için bir işlem seçin";
+"create_qr" = "QR Kodumu Oluştur";
+"scan_qr" = "QR Kod Tara";
+"meeting_date" = "Buluşma Tarihi";
+"rate_match" = "Eşleşmeyi Değerlendir";
+"match_verified" = "Doğrulandı";
+"match_pending" = "Doğrulama Bekliyor";
+"match_cancelled" = "İptal Edildi";
+"match_completed" = "Tamamlandı";
+"match_rating_punctuality" = "Dakiklik";
+"match_rating_experience" = "Deneyim";
+"match_rating_profile" = "Profil";
+"match_rating_comment" = "Yorum ekle (isteğe bağlı)";
+"match_rating_submit" = "Değerlendirmeyi Gönder";
+"match_rating_cancel" = "İptal";
+"match_rating_success" = "Değerlendirme başarıyla gönderildi";
+"match_rating_error" = "Değerlendirme gönderilirken hata oluştu"; 

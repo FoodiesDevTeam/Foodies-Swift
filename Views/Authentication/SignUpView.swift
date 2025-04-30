@@ -21,14 +21,14 @@ struct SignUpView: View {
                     .frame(width: 150, height: 150)
                 
                 // Title
-                Text("Foodies App'e Hoş Geldiniz")
+                Text(LanguageManager.shared.localizedString("welcome_to_foodies"))
                     .font(.title)
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
                 
                 // Sign Up Form
                 VStack(spacing: 20) {
-                    TextField("E-posta", text: $email)
+                    TextField(LanguageManager.shared.localizedString("email_placeholder"), text: $email)
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
@@ -40,7 +40,7 @@ struct SignUpView: View {
                                 .stroke(Color.gray.opacity(0.5), lineWidth: 1)
                         )
                     
-                    SecureField("Şifre", text: $password)
+                    SecureField(LanguageManager.shared.localizedString("password_placeholder"), text: $password)
                         .textContentType(.newPassword)
                         .padding()
                         .background(
@@ -48,7 +48,7 @@ struct SignUpView: View {
                                 .stroke(Color.gray.opacity(0.5), lineWidth: 1)
                         )
                     
-                    SecureField("Şifre Tekrar", text: $confirmPassword)
+                    SecureField(LanguageManager.shared.localizedString("confirm_password_placeholder"), text: $confirmPassword)
                         .textContentType(.newPassword)
                         .padding()
                         .background(
@@ -64,7 +64,7 @@ struct SignUpView: View {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     } else {
-                        Text("Kayıt Ol")
+                        Text(LanguageManager.shared.localizedString("sign_up"))
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -86,14 +86,14 @@ struct SignUpView: View {
                 Button(action: {
                     dismiss()
                 }) {
-                    Text("Hesabınız var mı? Giriş yapın")
+                    Text(LanguageManager.shared.localizedString("have_account"))
                         .foregroundColor(.blue)
                 }
             }
             .padding()
             .navigationBarHidden(true)
-            .alert("Hata", isPresented: $showAlert) {
-                Button("Tamam", role: .cancel) { }
+            .alert(LanguageManager.shared.localizedString("error_title"), isPresented: $showAlert) {
+                Button(LanguageManager.shared.localizedString("ok_button"), role: .cancel) { }
             } message: {
                 Text(alertMessage)
             }
@@ -105,13 +105,13 @@ struct SignUpView: View {
     
     private func signUp() {
         guard !email.isEmpty, !password.isEmpty, !confirmPassword.isEmpty else {
-            alertMessage = "Lütfen tüm alanları doldurun"
+            alertMessage = LanguageManager.shared.localizedString("error_empty_fields")
             showAlert = true
             return
         }
         
         guard password == confirmPassword else {
-            alertMessage = "Şifreler eşleşmiyor"
+            alertMessage = LanguageManager.shared.localizedString("error_passwords_dont_match")
             showAlert = true
             return
         }
@@ -131,7 +131,7 @@ struct SignUpView: View {
                     case .clientError(let message):
                         alertMessage = message
                     default:
-                        alertMessage = "Kayıt işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin."
+                        alertMessage = LanguageManager.shared.localizedString("error_sign_up")
                     }
                     showAlert = true
                     isLoading = false
@@ -139,7 +139,7 @@ struct SignUpView: View {
             } catch {
                 await MainActor.run {
                     print("Signup Error: \(error)")
-                    alertMessage = "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin."
+                    alertMessage = LanguageManager.shared.localizedString("error_sign_up")
                     showAlert = true
                     isLoading = false
                 }

@@ -1,17 +1,57 @@
 import SwiftUI
 import PhotosUI
 
+struct WaveShape: Shape {
+    var offset: Angle
+    var percent: Double
+    
+    var animatableData: Double {
+        get { offset.degrees }
+        set { offset = Angle(degrees: newValue) }
+    }
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let waveHeight = rect.height * 0.1
+        let yOffset = rect.height * (1 - percent)
+
+        path.move(to: CGPoint(x: 0, y: yOffset))
+        
+        for x in stride(from: 0, through: rect.width, by: 1) {
+            let relativeX = x / rect.width
+            let sine = sin(relativeX * .pi * 2 + offset.radians)
+            let y = yOffset + waveHeight * CGFloat(sine)
+            path.addLine(to: CGPoint(x: x, y: y))
+        }
+        
+        path.addLine(to: CGPoint(x: rect.width, y: rect.height))
+        path.addLine(to: CGPoint(x: 0, y: rect.height))
+        path.closeSubpath()
+        
+        return path
+    }
+}
+
 struct ProfileView: View {
     @State private var showSettings = false
     @State private var showEditProfile = false
     @State private var showPhotosAndBio = false
-    @State private var selectedItem: PhotosPickerItem?
     @State private var navigateToSignIn = false
     @State private var viewRefreshTrigger = false
     @StateObject private var viewModel = ProfileViewModel()
     @Environment(\.presentationMode) var presentationMode
+    @State private var showEditBioView = false
+    @State private var pulsate = false
+    @State private var waveOffset = Angle(degrees: 0)
+    @State private var isHovering = false
+    let userToDisplay: UserDefaultsManager.User?
+    let isCurrentUser: Bool
     
-    // MARK: - Computed Properties
+    init(userToDisplay: UserDefaultsManager.User? = nil, isCurrentUser: Bool = true) {
+        self.userToDisplay = userToDisplay
+        self.isCurrentUser = isCurrentUser
+    }
+    
     private var userFullName: String {
         guard let info = viewModel.user?.personalInfo else { return "" }
         return "\(info.name) \(info.surname)"
@@ -22,46 +62,102 @@ struct ProfileView: View {
         let calendar = Calendar.current
         let ageComponents = calendar.dateComponents([.year], from: info.birthDate, to: Date())
         guard let age = ageComponents.year else { return "" }
-        return String(format: "%d yaş", age)
+        let formatString = NSLocalizedString("profile_years_old_format", comment: "Age format string")
+        return String(format: formatString, age)
     }
     
     private var userLocation: String {
         guard let info = viewModel.user?.personalInfo,
               let city = info.city else { return "" }
-        return "\(city), TR"
+        let formatString = NSLocalizedString("profile_location_format", comment: "Location format string")
+        return String(format: formatString, city)
     }
     
     // MARK: - View Body
     var body: some View {
-        VStack(spacing: 0) {
-            headerView
-            ScrollView {
-                VStack(spacing: 20) {
-                    profileInfoView
-                    infoListView
-                    
-                    // Yemek Tercihleri ve Hobiler
-                    if !viewModel.userFoodPreferences.isEmpty || !viewModel.userHobbies.isEmpty {
-                        preferencesView
+        NavigationView {
+            ZStack {
+                // Background gradient
+                LinearGradient(
+                    colors: [
+                        Color(.systemBackground),
+                        Color(.systemBackground).opacity(0.8),
+                        Color.blue.opacity(0.1),
+                        Color.purple.opacity(0.1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                VStack(spacing: 0) {
+                    // Header
+                    ZStack {
+                        // Header background
+                        LinearGradient(
+                            colors: [.pink, .purple, .blue],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                        .frame(height: 100)
+
+                        
+                        // Header Content
+                        VStack(spacing: 0) {
+                            HStack {
+                                Spacer()
+                                
+                                Text("Profil")
+                                    .font(.title2)
+                                    .bold()
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                Button {
+                                    showSettings = true
+                                } label: {
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 25))
+                                }
+                            }
+                            .padding(.top, 80)
+                        }
                     }
-                    
-                    // Eşleşme Tercihleri
-                    if let matchingPrefs = viewModel.matchingPreferences {
-                        matchingPreferencesView(matchingPrefs)
+
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            // Profile Header
+                            profileHeaderView
+                                .padding(.top, 15)
+                            
+                            // Profile Info
+                            profileInfoView
+                            
+                            // Edit Buttons
+                            editButtonsView
+                                .padding(.bottom, 20)
+                        }
                     }
                 }
-                .padding(.top, 20)
             }
-            .background(Color(UIColor.systemGray6))
+            .navigationBarHidden(true)
         }
-        .id(viewRefreshTrigger)
-        .edgesIgnoringSafeArea(.top)
         .sheet(isPresented: $showSettings) {
             SettingsView(onLogout: handleLogout)
         }
         .sheet(isPresented: $showEditProfile) {
-            NavigationView {
-                PersonalInfoView(isEditMode: true, onSave: handleProfileUpdate)
+            if let currentUser = viewModel.user {
+                NavigationView {
+                    PersonalInfoView(
+                        isEditMode: true,
+                        existingInfo: currentUser.personalInfo,
+                        onSave: {
+                            viewModel.loadUserData()
+                        }
+                    )
+                }
             }
         }
         .sheet(isPresented: $showPhotosAndBio) {
@@ -69,194 +165,170 @@ struct ProfileView: View {
                 PhotosAndBioView(onboardingState: .photoBio)
             }
         }
-        .fullScreenCover(isPresented: $navigateToSignIn) {
-            SignInView()
-        }
-        .onChange(of: selectedItem) { newValue in
-            handlePhotoSelection(newValue)
+        .sheet(isPresented: $showEditBioView) {
+            EditBioView(
+                currentBio: viewModel.user?.bio ?? "",
+                onSave: { newBio in
+                    viewModel.updateBio(newBio)
+                }
+            )
         }
         .onChange(of: LanguageManager.shared.currentLanguage) { _ in
             viewRefreshTrigger.toggle()
         }
         .onAppear {
-            viewModel.loadUserData()
+            loadUserData()
+        }
+        .fullScreenCover(isPresented: $navigateToSignIn) {
+            SignInView()
         }
     }
     
     // MARK: - Subviews
-    private var headerView: some View {
-        ZStack {
-            LinearGradient(
-                colors: [.pink, .purple, .blue],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(height: 100)
-            
-            HStack {
-                Spacer()
-                Text(LanguageManager.shared.localizedString("profile"))
-                    .font(.title2)
-                    .bold()
-                    .foregroundColor(.white)
-                Spacer()
-                
-                Button(action: { showSettings = true }) {
-                    Image(systemName: "ellipsis")
-                        .foregroundColor(.white)
-                        .font(.system(size: 24))
-                }
-            }
-            .padding(.horizontal)
-            .padding(.top, 40)
-        }
-    }
-    
-    private var profileInfoView: some View {
-        VStack(spacing: 10) {
-            profilePhotoView
-            profileBasicInfoView
-        }
-        .background(Color(UIColor.systemBackground))
-        .cornerRadius(20)
-        .shadow(radius: 1)
-        .padding(.horizontal)
-    }
-    
-    private var profilePhotoView: some View {
+    private var profileHeaderView: some View {
         VStack {
-            Group {
-                if let profileImage = viewModel.profileImage {
-                    Image(uiImage: profileImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 120, height: 120)
-                        .clipShape(Circle())
-                        .padding(.top, 20)
-                } else if let photos = viewModel.user?.photos,
-                          let photoData = photos.first,
-                          let uiImage = UIImage(data: photoData) {
+            PhotosPicker(selection: $viewModel.selectedPhoto, matching: .images) {
+                if let photoData = viewModel.user?.photos?.first,
+                   let uiImage = UIImage(data: photoData) {
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFill()
                         .frame(width: 120, height: 120)
                         .clipShape(Circle())
-                        .padding(.top, 20)
+                        .overlay(Circle().stroke(Color.blue, lineWidth: 2))
+                        .overlay(
+                            Circle()
+                                .fill(Color.black.opacity(0.3))
+                                .overlay(
+                                    Image(systemName: "camera.fill")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 30))
+                                )
+                                .opacity(isHovering ? 0.7 : 0)
+                        )
+                        .onHover { hovering in
+                            isHovering = hovering
+                        }
                 } else {
-                    Circle()
-                        .fill(Color.gray.opacity(0.3))
+                    Image(systemName: "person.circle.fill")
+                        .resizable()
+                        .scaledToFit()
                         .frame(width: 120, height: 120)
-                        .padding(.top, 20)
+                        .foregroundColor(.gray)
+                        .overlay(
+                            Circle()
+                                .fill(Color.black.opacity(0.3))
+                                .overlay(
+                                    Image(systemName: "camera.fill")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 30))
+                                )
+                                .opacity(isHovering ? 0.7 : 0)
+                        )
+                        .onHover { hovering in
+                            isHovering = hovering
+                        }
                 }
             }
             
-            PhotosPicker(selection: $selectedItem, matching: .images) {
-                Text("Fotoğraf Seç")
+            if let user = viewModel.user, let info = user.personalInfo {
+                Text("\(info.firstName) \(info.lastName)")
+                    .font(.title2)
+                    .bold()
+                
+                Text(user.bio ?? "")
                     .font(.subheadline)
-                    .foregroundColor(.blue)
-            }
-            
-            Button(action: { showPhotosAndBio = true }) {
-                Text("Bio Düzenle")
-                    .font(.subheadline)
-                    .foregroundColor(.blue)
-            }
-            .padding(.top, 5)
-        }
-    }
-    
-    private var profileBasicInfoView: some View {
-        VStack(spacing: 5) {
-            Text(userFullName)
-                .font(.title2)
-                .bold()
-            
-            if let occupation = viewModel.user?.personalInfo?.occupation {
-                Text(occupation)
-                    .font(.headline)
                     .foregroundColor(.gray)
-            }
-            
-            Text(userAge)
-                .font(.subheadline)
-                .foregroundColor(.gray)
-                .padding(.bottom, 2)
-            
-            Text(userLocation)
-                .font(.subheadline)
-                .foregroundColor(.gray)
-            
-            if let bio = viewModel.user?.bio {
-                Text(bio)
-                    .font(.body)
-                    .foregroundColor(.black)
                     .multilineTextAlignment(.center)
-                    .padding(.top, 8)
                     .padding(.horizontal)
             }
         }
-        .padding(.bottom, 15)
     }
     
-    private var infoListView: some View {
-        VStack(spacing: 0) {
-            infoRow(icon: "person", text: userFullName)
-            if let email = viewModel.user?.email {
-                infoRow(icon: "envelope", text: email)
-            }
-            if let birthDate = viewModel.user?.personalInfo?.birthDate {
-                infoRow(icon: "calendar", text: formatDate(birthDate))
-            }
-            if let city = viewModel.user?.personalInfo?.city {
-                infoRow(icon: "mappin.and.ellipse", text: city)
-            }
-            if let occupation = viewModel.user?.personalInfo?.occupation {
-                infoRow(icon: "briefcase", text: occupation, isLast: true)
+    private var profileInfoView: some View {
+        VStack(spacing: 15) {
+            if let user = viewModel.user, let info = user.personalInfo {
+                // Basic Info
+                infoRow(icon: "person.fill", text: "\(info.firstName) \(info.lastName)")
+                infoRow(icon: "calendar", text: viewModel.formatDate(info.birthDate))
+                if let city = info.city {
+                    infoRow(icon: "mappin.circle.fill", text: city)
+                }
+                if let occupation = info.occupation {
+                    infoRow(icon: "briefcase.fill", text: occupation)
+                }
+                
+                // Status Info
+                HStack(spacing: 20) {
+                    statusItem(icon: "flame.fill", text: info.smokingStatus == .yes ? "Evet" : "Hayır", title: "Sigara")
+                    statusItem(icon: "wineglass.fill", text: info.drinkingStatus == .yes ? "Evet" : "Hayır", title: "Alkol")
+                }
+                .padding(.top, 5)
             }
         }
+        .padding()
+        .background(Color(.systemGray6))
         .cornerRadius(12)
-        .shadow(radius: 1)
         .padding(.horizontal)
     }
     
-    private func infoRow(icon: String, text: String, isLast: Bool = false) -> some View {
-        VStack(spacing: 0) {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(.gray)
-                    .frame(width: 30)
-                Text(text)
-                    .foregroundColor(.black)
-                Spacer()
+    private var editButtonsView: some View {
+        VStack(spacing: 12) {
+            Button(action: { showEditProfile = true }) {
+                Label(LanguageManager.shared.localizedString("edit_profile"), systemImage: "pencil")
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(10)
             }
-            .padding()
-            .background(Color(UIColor.systemBackground))
             
-            if !isLast {
-                Divider()
+            Button(action: { showEditBioView = true }) {
+                Label(LanguageManager.shared.localizedString("edit_bio"), systemImage: "text.quote")
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.purple)
+                    .cornerRadius(10)
             }
+        }
+        .padding(.horizontal)
+    }
+    
+    private func infoRow(icon: String, text: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .frame(width: 30)
+            Text(text)
+            Spacer()
+        }
+    }
+    
+    private func statusItem(icon: String, text: String, title: String) -> some View {
+        VStack(spacing: 5) {
+            Text(title)
+                .font(.caption)
+                .foregroundColor(.gray)
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .foregroundColor(.blue)
+                Text(text)
+            }
+            .font(.subheadline)
         }
     }
     
     // MARK: - Helper Methods
     private func handleLogout() {
-        if let username = viewModel.user?.username {
-            UserDefaultsManager.shared.removeUser(username: username)
-            NotificationCenter.default.post(name: NSNotification.Name("UserDidLogout"), object: nil)
-        }
-        showSettings = false
-    }
-    
-    private func handleProfileUpdate() {
-        showEditProfile = false
-        viewModel.loadUserData()
-    }
-    
-    private func handlePhotoSelection(_ item: PhotosPickerItem?) {
         Task {
-            if let data = try? await item?.loadTransferable(type: Data.self),
-               let image = UIImage(data: data) {
-                viewModel.updateProfilePhoto(data)
+            do {
+                try await SupabaseService.shared.signOut()
+                NotificationCenter.default.post(name: Constants.NotificationNames.userDidLogout, object: nil)
+                showSettings = false
+                navigateToSignIn = true
+            } catch {
+                print("Çıkış yapılırken hata oluştu: \(error)")
             }
         }
     }
@@ -268,7 +340,7 @@ struct ProfileView: View {
     // MARK: - Preferences Views
     private var preferencesView: some View {
         VStack(spacing: 0) {
-            // Yemek Tercihleri
+          
             if !viewModel.userFoodPreferences.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Yemek Zevkleri")
@@ -409,4 +481,16 @@ struct ProfileView: View {
         case .any: return "Farketmez"
         }
     }
+    
+    private func loadUserData() {
+        if isCurrentUser {
+            viewModel.loadUserData()
+        } else if let user = userToDisplay {
+            viewModel.configureFor(user: user)
+        }
+    }
+}
+
+#Preview {
+    ProfileView()
 }

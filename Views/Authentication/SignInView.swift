@@ -16,13 +16,13 @@ struct SignInView: View {
                 .scaledToFit()
                 .frame(width: 150, height: 150)
             
-            Text("Foodies App'e Hoş Geldiniz")
+            Text(LanguageManager.shared.localizedString("welcome_to_foodies"))
                 .font(.title)
                 .fontWeight(.bold)
                 .multilineTextAlignment(.center)
             
             VStack(spacing: 20) {
-                TextField("E-posta", text: $email)
+                TextField(LanguageManager.shared.localizedString("email_placeholder"), text: $email)
                     .textContentType(.emailAddress)
                     .autocapitalization(.none)
                     .keyboardType(.emailAddress)
@@ -32,7 +32,7 @@ struct SignInView: View {
                             .stroke(Color.gray.opacity(0.5), lineWidth: 1)
                     )
                 
-                SecureField("Şifre", text: $password)
+                SecureField(LanguageManager.shared.localizedString("password_placeholder"), text: $password)
                     .textContentType(.password)
                     .padding()
                     .background(
@@ -48,7 +48,7 @@ struct SignInView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
-                    Text("Giriş Yap")
+                    Text(LanguageManager.shared.localizedString("sign_in"))
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -67,12 +67,12 @@ struct SignInView: View {
             .disabled(isLoading)
             
             // Sign up link
-            NavigationLink("Hesabınız yok mu? Kayıt olun", destination: SignUpView())
+            NavigationLink(LanguageManager.shared.localizedString("no_account"), destination: SignUpView())
                 .foregroundColor(.blue)
         }
         .padding()
-        .alert("Hata", isPresented: $showAlert) {
-            Button("Tamam", role: .cancel) { }
+        .alert(LanguageManager.shared.localizedString("error_title"), isPresented: $showAlert) {
+            Button(LanguageManager.shared.localizedString("ok_button"), role: .cancel) { }
         } message: {
             Text(alertMessage)
         }
@@ -83,7 +83,7 @@ struct SignInView: View {
     
     private func signIn() {
         guard !email.isEmpty, !password.isEmpty else {
-            alertMessage = "Lütfen e-posta ve şifrenizi girin"
+            alertMessage = LanguageManager.shared.localizedString("error_empty_fields")
             showAlert = true
             return
         }
@@ -99,7 +99,7 @@ struct SignInView: View {
                 }
             } catch {
                 await MainActor.run {
-                    alertMessage = "Giriş yapılamadı: \(error.localizedDescription)"
+                    alertMessage = String(format: LanguageManager.shared.localizedString("error_sign_in"), error.localizedDescription)
                     showAlert = true
                     isLoading = false
                 }

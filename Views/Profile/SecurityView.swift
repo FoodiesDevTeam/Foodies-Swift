@@ -291,15 +291,15 @@ struct BlockedUsersView: View {
     
     private func loadBlockedUsers() {
         if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            // Implement blocked users loading
-            blockedUsers = ["demo_user1", "demo_user2"] // Demo data
+            // Gerçek engellenen kullanıcıları yükle
+            blockedUsers = []
         }
     }
     
     private func unblockUser(_ username: String) {
         if let index = blockedUsers.firstIndex(of: username) {
             blockedUsers.remove(at: index)
-            // Implement unblock functionality
+            // Engeli kaldırma işlemini gerçekleştir
         }
     }
 }

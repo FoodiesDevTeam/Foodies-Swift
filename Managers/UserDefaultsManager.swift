@@ -9,6 +9,7 @@ class UserDefaultsManager {
     private let meetingsKey = "meetings"
     private let ratingsKey = "ratings"
     private let passwordsKey = "passwords"
+    private let matchesKey = "matches"
     
     private init() {}
     
@@ -225,8 +226,20 @@ class UserDefaultsManager {
     }
     
     // MARK: - Message Management
+    
+    // Private helper: Mesajları UserDefaults'tan ASIL okuyan fonksiyon
+    private func getAllMessagesFromDefaults() -> [Message] {
+        if let data = defaults.data(forKey: messagesKey),
+           let messages = try? JSONDecoder().decode([Message].self, from: data) {
+            return messages
+        }
+        return []
+    }
+    
+    // Public function: Mesajları alır ve filtreler
     func getMessages(filter: MessageFilter? = nil) -> [Message] {
-        var messages = getMessages()
+        // Önce TÜM mesajları UserDefaults'tan okuyalım
+        var messages = getAllMessagesFromDefaults()
         
         if let filter = filter {
             if let userId = filter.userId {
@@ -249,6 +262,13 @@ class UserDefaultsManager {
         return messages
     }
     
+    func getConversation(between user1: String, and user2: String) -> [Message] {
+        return getAllMessagesFromDefaults().filter { msg in
+            (msg.senderId == user1 && msg.receiverId == user2) ||
+            (msg.senderId == user2 && msg.receiverId == user1)
+        }.sorted { $0.timestamp < $1.timestamp }
+    }
+    
     private func saveMessages(_ messages: [Message]) {
         if let data = try? JSONEncoder().encode(messages) {
             defaults.set(data, forKey: messagesKey)
@@ -256,17 +276,12 @@ class UserDefaultsManager {
     }
     
     func sendMessage(senderId: String, receiverId: String, content: String) {
-        let message = Message(senderId: senderId, receiverId: receiverId, content: content)
-        var messages = getMessages()
+        let senderPhoto = getUser(username: senderId)?.photos?.first 
+        let message = Message(senderId: senderId, receiverId: receiverId, content: content, senderPhotoData: senderPhoto)
+        
+        var messages = getAllMessagesFromDefaults()
         messages.append(message)
         saveMessages(messages)
-    }
-    
-    func getConversation(between user1: String, and user2: String) -> [Message] {
-        return getMessages().filter { msg in
-            (msg.senderId == user1 && msg.receiverId == user2) ||
-            (msg.senderId == user2 && msg.receiverId == user1)
-        }.sorted { $0.timestamp < $1.timestamp }
     }
     
     // MARK: - Meeting Management
@@ -598,7 +613,7 @@ class UserDefaultsManager {
     func updateUserBio(username: String, bio: String) {
         if var user = getUser(username: username) {
             user.bio = bio
-            saveUser(user)
+            updateUser(user)
         }
     }
     
@@ -642,5 +657,114 @@ class UserDefaultsManager {
         passwords[username] = password
         savePasswords(passwords)
         return newUser
+    }
+    
+    private let matchRequestsKey = "matchRequests"
+    
+    func getMatchRequests(for username: String) -> [MatchRequest] {
+        if let data = defaults.data(forKey: matchRequestsKey),
+           let requests = try? JSONDecoder().decode([MatchRequest].self, from: data) {
+            return requests.filter { $0.toUser == username }
+        }
+        return []
+    }
+    
+    func getPendingMatchRequests(for username: String) -> [MatchRequest] {
+        return getMatchRequests(for: username).filter { $0.status == .pending }
+    }
+    
+    func acceptMatchRequest(_ request: MatchRequest) {
+        var requests = getAllMatchRequests()
+        if let index = requests.firstIndex(where: { $0.id == request.id }) {
+            requests[index].status = .accepted
+            
+            // Eşleşme oluştur
+            let match = createMatch(between: request.fromUser, and: request.toUser)
+            
+            // İlk mesajı gönder
+            sendMessage(
+                senderId: request.fromUser,
+                receiverId: request.toUser,
+                content: "Merhaba! Eşleşmemiz başarılı oldu. Nasılsın?"
+            )
+            
+            saveMatchRequests(requests)
+        }
+    }
+    
+    func rejectMatchRequest(_ request: MatchRequest) {
+        var requests = getAllMatchRequests()
+        if let index = requests.firstIndex(where: { $0.id == request.id }) {
+            requests[index].status = .rejected
+            saveMatchRequests(requests)
+        }
+    }
+    
+    private func getAllMatchRequests() -> [MatchRequest] {
+        if let data = defaults.data(forKey: matchRequestsKey),
+           let requests = try? JSONDecoder().decode([MatchRequest].self, from: data) {
+            return requests
+        }
+        return []
+    }
+    
+    private func saveMatchRequests(_ requests: [MatchRequest]) {
+        if let data = try? JSONEncoder().encode(requests) {
+            defaults.set(data, forKey: matchRequestsKey)
+        }
+    }
+    
+    // MARK: - Match Management
+    struct Match: Codable, Identifiable {
+        let id: String
+        let user1: String
+        let user2: String
+        let timestamp: Date
+        var isActive: Bool
+    }
+    
+    func createMatch(between user1: String, and user2: String) -> Match {
+        let match = Match(
+            id: UUID().uuidString,
+            user1: user1,
+            user2: user2,
+            timestamp: Date(),
+            isActive: true
+        )
+        
+        var matches = getAllMatches()
+        matches.append(match)
+        saveMatches(matches)
+        
+        return match
+    }
+    
+    func getAllMatches() -> [Match] {
+        if let data = defaults.data(forKey: matchesKey),
+           let matches = try? JSONDecoder().decode([Match].self, from: data) {
+            return matches
+        }
+        return []
+    }
+    
+    func getActiveMatches(for username: String) -> [Match] {
+        return getAllMatches().filter { match in
+            (match.user1 == username || match.user2 == username) && match.isActive
+        }
+    }
+    
+    func getMatchPartner(for username: String, in match: Match) -> String? {
+        if match.user1 == username {
+            return match.user2
+        } else if match.user2 == username {
+            return match.user1
+        }
+        return nil
+    }
+    
+    private func saveMatches(_ matches: [Match]) {
+        if let data = try? JSONEncoder().encode(matches) {
+            defaults.set(data, forKey: matchesKey)
+        }
     }
 } 

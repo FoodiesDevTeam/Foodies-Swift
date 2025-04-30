@@ -7,41 +7,67 @@ struct MatchesView: View {
     @State private var pulsate = false
     @State private var selectedMeeting: UserDefaultsManager.Meeting?
     @State private var showQROptions = false
+    @State private var showMatchRequests = false
+    @State private var pendingRequests: [MatchRequest] = []
+    @StateObject private var languageManager = LanguageManager.shared
     
     var body: some View {
         VStack(spacing: 0) {
             // Header
             ZStack {
+                // Header background
                 LinearGradient(
                     colors: [.pink, .purple, .blue],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
                 .frame(height: 100)
+                .edgesIgnoringSafeArea(.top)
                 
-                HStack {
-                    Spacer()
-                    Text(LanguageManager.shared.localizedString("matches"))
-                        .font(.title2)
-                        .bold()
-                        .foregroundColor(.white)
-                    Spacer()
-                    
-                    Button(action: {
-                        showQROptions = true
-                    }) {
-                        Image(systemName: "qrcode")
+                // Header Content
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer()
+                        
+                        Text(LanguageManager.shared.localizedString("matches"))
+                            .font(.title2)
+                            .bold()
                             .foregroundColor(.white)
-                            .font(.system(size: 24))
+                        
+                        Spacer()
+                        
+                        HStack(spacing: 20) {
+                            // Bildirim butonu
+                            Button(action: {
+                                loadPendingRequests()
+                                showMatchRequests = true
+                            }) {
+                                ZStack {
+                                    Image(systemName: "bell.fill")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 20))
+                                    
+                                    if !pendingRequests.isEmpty {
+                                        Circle()
+                                            .fill(Color.red)
+                                            .frame(width: 8, height: 8)
+                                            .offset(x: 6, y: -6)
+                                    }
+                                }
+                            }
+                            
+                            Button(action: {
+                                showQROptions = true
+                            }) {
+                                Image(systemName: "qrcode")
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 20))
+                            }
+                        }
                     }
+                    .padding(.horizontal)
+                    .padding(.top, 50)
                 }
-                .padding(.horizontal)
-                .padding(.top, 40)
-            }
-            .offset(y: pulsate ? -10 : 0)
-            .animation(Animation.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsate)
-            .onAppear {
-                self.pulsate.toggle()
             }
             
             // Content
@@ -58,22 +84,30 @@ struct MatchesView: View {
         .sheet(isPresented: $showMyQRCode) {
             MyQRCodeView(currentUser: UserDefaultsManager.shared.getCurrentUser())
         }
+        .sheet(isPresented: $showMatchRequests) {
+            MatchRequestsView()
+        }
         .actionSheet(isPresented: $showQROptions) {
             ActionSheet(
-                title: Text(LanguageManager.shared.localizedString("qrOperations")),
-                message: Text(LanguageManager.shared.localizedString("qrVerificationMessage")),
+                title: Text(LanguageManager.shared.localizedString("qr_operations")),
+                message: Text(LanguageManager.shared.localizedString("qr_verification_message")),
                 buttons: [
-                    .default(Text(LanguageManager.shared.localizedString("createQR"))) {
+                    .default(Text(LanguageManager.shared.localizedString("create_qr"))) {
                         showMyQRCode = true
                     },
-                    .default(Text(LanguageManager.shared.localizedString("scanQR"))) {
+                    .default(Text(LanguageManager.shared.localizedString("scan_qr"))) {
                         showQRScanner = true
                     },
-                    .cancel(Text(LanguageManager.shared.localizedString("cancel")))
+                    .cancel(Text(LanguageManager.shared.localizedString("match_rating_cancel")))
                 ]
             )
         }
         .onAppear {
+            loadMatches()
+            loadPendingRequests()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("LanguageDidChange"))) { _ in
+            // Dil değişikliğinde UI'ı yenile
             loadMatches()
         }
     }
@@ -90,11 +124,11 @@ struct MatchesView: View {
                         .frame(width: 180, height: 180)
                 )
             
-            Text(LanguageManager.shared.localizedString("noMatches"))
+            Text(LanguageManager.shared.localizedString("no_matches"))
                 .font(.title2)
                 .fontWeight(.bold)
             
-            Text(LanguageManager.shared.localizedString("exploreMessage"))
+            Text(LanguageManager.shared.localizedString("explore_message"))
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
@@ -174,29 +208,18 @@ struct MatchesView: View {
         matches = loadedMatches.sorted(by: { $0.meetingDate > $1.meetingDate })
     }
     
-    private func rateMatch(match: Match, rating: Rating) {
-        guard let currentUser = UserDefaultsManager.shared.getCurrentUser() else { return }
-        
-        // UserDefaultsManager'a derecelendirmeyi kaydet
-        UserDefaultsManager.shared.addRating(
-            to: match.username,
-            type: rating.type,
-            score: rating.score,
-            comment: nil
-        )
-        
-        // UI'ı güncelle
-        loadMatches()
+    private func loadPendingRequests() {
+        if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
+            pendingRequests = UserDefaultsManager.shared.getPendingMatchRequests(for: currentUser.username)
+        }
     }
     
     private func handleScannedQRCode(_ code: String) {
-        // QR kod taraması sonucunu işleme
-        if code.starts(with: "FOODIES_MEETING:") {
-            if let verifiedMeeting = UserDefaultsManager.shared.verifyMeeting(verificationCode: code) {
-                // Meeting onaylandı, UI'ı güncelle
-                loadMatches()
-            }
-        }
+        // QR kod işleme mantığı
+    }
+    
+    private func rateMatch(match: Match, rating: Rating) {
+        // Derecelendirme işleme mantığı
     }
 }
 
@@ -246,7 +269,7 @@ struct MatchCard: View {
                         }
                     }
                     
-                    Text("Buluşma tarihi: \(formattedDate(match.meetingDate))")
+                    Text(LanguageManager.shared.localizedString("meeting_date") + ": \(formattedDate(match.meetingDate))")
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 }

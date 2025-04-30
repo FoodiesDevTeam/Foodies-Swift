@@ -23,6 +23,21 @@ struct PersonalInfoView: View {
     let isEditMode: Bool
     var onSave: (() -> Void)?
     
+    init(isEditMode: Bool, existingInfo: UserDefaultsManager.PersonalInfo? = nil, onSave: (() -> Void)? = nil) {
+        self.isEditMode = isEditMode
+        self.onSave = onSave
+        
+        // State değişkenlerini başlat
+        _firstName = State(initialValue: existingInfo?.name ?? "")
+        _lastName = State(initialValue: existingInfo?.surname ?? "")
+        _birthDate = State(initialValue: existingInfo?.birthDate ?? Calendar.current.date(byAdding: .year, value: -18, to: Date())!)
+        _gender = State(initialValue: existingInfo?.gender ?? .male)
+        _city = State(initialValue: existingInfo?.city ?? "")
+        _occupation = State(initialValue: existingInfo?.occupation ?? "")
+        _smokingStatus = State(initialValue: existingInfo?.smokingStatus ?? .no)
+        _drinkingStatus = State(initialValue: existingInfo?.drinkingStatus ?? .no)
+    }
+    
     private let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .long
@@ -136,7 +151,7 @@ struct PersonalInfoView: View {
             .disabled(isLoading)
             .padding()
             
-            // NavigationLink kaldırıldı - artık OnboardingView akışını kullanıyoruz
+        
         }
         .padding(.top, Constants.Design.defaultPadding)
         .background(

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var isAuthenticated = false
+    @StateObject private var authViewModel = AuthViewModel()
     
     var body: some View {
         Group {
@@ -17,7 +18,6 @@ struct ContentView: View {
             } else {
                 NavigationView {
                     VStack(spacing: Constants.Design.defaultSpacing) {
-                        // App Title
                         Text("Foodies App")
                             .font(.system(size: Constants.FontSizes.title1, weight: .bold))
                             .foregroundStyle(Constants.Design.mainGradient)
@@ -25,7 +25,6 @@ struct ContentView: View {
                         
                         Spacer()
                         
-                        // Main Title and Subtitle
                         VStack(spacing: Constants.Design.defaultPadding) {
                             Text("Yemek Arkadaşını\nBul")
                                 .font(.system(size: Constants.FontSizes.title2, weight: .bold))
@@ -36,8 +35,7 @@ struct ContentView: View {
                                 .multilineTextAlignment(.center)
                                 .foregroundColor(.gray)
                         }
-                        
-                        // Get Started Button
+
                         NavigationLink(destination: SignInView()) {
                             Text("Başla")
                                 .fontWeight(.semibold)
@@ -63,8 +61,12 @@ struct ContentView: View {
     }
     
     private func checkAuthStatus() {
-        if UserDefaultsManager.shared.getCurrentUser() != nil {
-            isAuthenticated = true
+        Task {
+            if let _ = try? await SupabaseService.shared.getCurrentUser() {
+                isAuthenticated = true
+            } else {
+                isAuthenticated = false
+            }
         }
     }
 }

@@ -13,73 +13,96 @@ struct MatchView: View {
     @State private var showMatchAlert = false
     @State private var matchedUser: UserDefaultsManager.User?
     @State private var showMeetingSetup = false
+    @State private var translation: CGSize = .zero
+    @State private var rotationAngle: Angle = .zero
+    @State private var showLikeOverlay = false
+    @State private var showPassOverlay = false
     
     var body: some View {
         VStack(spacing: 0) {
             // Header
-            VStack(spacing: 0) {
-                // Segment Control
-                Picker("Match Type", selection: $matchType) {
-                    Text("Best Match").tag(MatchType.bestMatch)
-                    Text("Close To You").tag(MatchType.closeToYou)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .onChange(of: matchType) { _ in
-                    loadMatches()
-                }
-            }
-            .background(
+            ZStack {
+                // Header background
                 LinearGradient(
                     colors: [.pink, .purple, .blue],
                     startPoint: .leading,
                     endPoint: .trailing
                 )
-            )
+                .frame(height: 100)
+                .edgesIgnoringSafeArea(.top)
+                
+                // Header Content
+                VStack(spacing: 0) {
+                    HStack {
+                        Spacer()
+                        
+                        Text(LanguageManager.shared.localizedString("Matches"))
+                            .font(.title2)
+                            .bold()
+                            .foregroundColor(.white)
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 50)
+                }
+            }
             
-            if let currentMatch = potentialMatches.indices.contains(currentIndex) ? potentialMatches[currentIndex] : nil {
+            // Content
+            if potentialMatches.isEmpty {
+                VStack {
+                    Spacer()
+                    Text(LanguageManager.shared.localizedString("no_more_matches"))
+                        .font(.title)
+                        .foregroundColor(.gray)
+                    Spacer()
+                }
+            } else {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Profile Photo
-                        if let photos = currentMatch.photos, !photos.isEmpty,
-                           let photoData = photos.first,
-                           let uiImage = UIImage(data: photoData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(height: 450)
-                                .clipped()
+                        if let currentMatch = potentialMatches.indices.contains(currentIndex) ? potentialMatches[currentIndex] : nil {
+                            if let photos = currentMatch.photos, !photos.isEmpty,
+                               let photoData = photos.first,
+                               let uiImage = UIImage(data: photoData) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 450)
+                                    .clipped()
+                            }
                         }
                         
                         // User Info with Purple Background
                         VStack(alignment: .leading, spacing: 12) {
-                            if let info = currentMatch.personalInfo {
-                                // Name and Age
-                                Text("\(info.firstName) \(info.lastName), \(calculateAge(from: info.birthDate))")
-                                    .font(.title)
-                                    .bold()
-                                    .foregroundColor(.white)
-                                
-                                // Bio
-                                if let bio = currentMatch.bio, !bio.isEmpty {
-                                    Text(bio)
-                                        .foregroundColor(.white.opacity(0.9))
-                                        .font(.body)
-                                }
-                                
-                                // Interests
-                                if let preferences = currentMatch.appPreferences {
-                                    ScrollView(.horizontal, showsIndicators: false) {
-                                        HStack(spacing: 8) {
-                                            ForEach(preferences.hobbies + preferences.foodPreferences, id: \.self) { interest in
-                                                Text(interest)
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.white)
-                                                    .padding(.horizontal, 16)
-                                                    .padding(.vertical, 8)
-                                                    .background(Color.white.opacity(0.2))
-                                                    .cornerRadius(20)
+                            if let currentMatch = potentialMatches.indices.contains(currentIndex) ? potentialMatches[currentIndex] : nil {
+                                if let info = currentMatch.personalInfo {
+                                    // Name and Age
+                                    Text("\(info.firstName) \(info.lastName), \(calculateAge(from: info.birthDate))")
+                                        .font(.title)
+                                        .bold()
+                                        .foregroundColor(.white)
+                                    
+                                    // Bio
+                                    if let bio = currentMatch.bio, !bio.isEmpty {
+                                        Text(bio)
+                                            .foregroundColor(.white.opacity(0.9))
+                                            .font(.body)
+                                    }
+                                    
+                                    // Interests
+                                    if let preferences = currentMatch.appPreferences {
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 8) {
+                                                ForEach(preferences.hobbies + preferences.foodPreferences, id: \.self) { interest in
+                                                    Text(interest)
+                                                        .font(.subheadline)
+                                                        .foregroundColor(.white)
+                                                        .padding(.horizontal, 16)
+                                                        .padding(.vertical, 8)
+                                                        .background(Color.white.opacity(0.2))
+                                                        .cornerRadius(20)
+                                                }
                                             }
                                         }
                                     }
@@ -88,55 +111,72 @@ struct MatchView: View {
                         }
                         .padding()
                         .background(Color.purple)
-                        
-                        // Action Buttons
-                        HStack(spacing: 40) {
-                            Button(action: { handlePass() }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.red)
-                                    .frame(width: 60, height: 60)
-                                    .background(Color.white)
-                                    .clipShape(Circle())
-                                    .shadow(radius: 3)
+                    }
+                    .offset(x: translation.width, y: 0)
+                    .rotationEffect(rotationAngle, anchor: .bottom)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                translation = value.translation
+                                rotationAngle = Angle(degrees: Double(translation.width / 20.0))
+                                
+                                if translation.width > 50 {
+                                    showLikeOverlay = true
+                                    showPassOverlay = false
+                                } else if translation.width < -50 {
+                                    showPassOverlay = true
+                                    showLikeOverlay = false
+                                } else {
+                                    showLikeOverlay = false
+                                    showPassOverlay = false
+                                }
                             }
-                            
-                            Button(action: { handleSuperLike() }) {
-                                Image(systemName: "star.fill")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.yellow)
-                                    .frame(width: 60, height: 60)
-                                    .background(Color.white)
-                                    .clipShape(Circle())
-                                    .shadow(radius: 3)
+                            .onEnded { value in
+                                let dragThreshold: CGFloat = 100
+                                if abs(value.translation.width) > dragThreshold {
+                                    if value.translation.width > dragThreshold {
+                                        handleLike()
+                                    } else {
+                                        handlePass()
+                                    }
+                                    resetCardPosition()
+                                } else {
+                                    withAnimation(.spring()) {
+                                        resetCardPosition()
+                                    }
+                                }
+                                showLikeOverlay = false
+                                showPassOverlay = false
                             }
-                            
-                            Button(action: { handleLike() }) {
-                                Image(systemName: "heart.fill")
-                                    .font(.system(size: 30))
+                    )
+                    .overlay(
+                        ZStack {
+                            if showLikeOverlay {
+                                Text("LIKE")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
                                     .foregroundColor(.green)
-                                    .frame(width: 60, height: 60)
-                                    .background(Color.white)
-                                    .clipShape(Circle())
-                                    .shadow(radius: 3)
+                                    .padding()
+                                    .background(Color.white.opacity(0.7))
+                                    .cornerRadius(10)
+                            }
+                            if showPassOverlay {
+                                Text("NOPE")
+                                    .font(.largeTitle)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.red)
+                                    .padding()
+                                    .background(Color.white.opacity(0.7))
+                                    .cornerRadius(10)
                             }
                         }
-                        .padding(.vertical, 20)
-                        .background(Color.white)
-                    }
+                    )
                 }
-            } else {
-                Spacer()
-                Text("Daha fazla eşleşme yok")
-                    .font(.title)
-                    .foregroundColor(.gray)
-                Spacer()
             }
         }
-        .edgesIgnoringSafeArea(.bottom)
+        .edgesIgnoringSafeArea(.top)
         .onAppear {
-            loadMatches()
-            updateRemainingLikes()
+            loadPotentialMatches()
         }
         .sheet(isPresented: $showMeetingSetup) {
             if let matchedUser = matchedUser {
@@ -151,7 +191,7 @@ struct MatchView: View {
                         .edgesIgnoringSafeArea(.all)
                     
                     VStack(spacing: 20) {
-                        Text("Başarılı Eşleşme!")
+                        Text(LanguageManager.shared.localizedString("successful_match"))
                             .font(.title)
                             .bold()
                             .foregroundColor(.white)
@@ -184,7 +224,7 @@ struct MatchView: View {
                             Button(action: {
                                 showMatchAlert = false
                             }) {
-                                Text("Sonra")
+                                Text(LanguageManager.shared.localizedString("later"))
                                     .font(.headline)
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 20)
@@ -197,7 +237,7 @@ struct MatchView: View {
                                 showMatchAlert = false
                                 showMeetingSetup = true
                             }) {
-                                Text("Buluşma Ayarla")
+                                Text(LanguageManager.shared.localizedString("schedule_meeting"))
                                     .font(.headline)
                                     .foregroundColor(.white)
                                     .padding(.horizontal, 20)
@@ -223,15 +263,33 @@ struct MatchView: View {
         )
     }
     
+    private func loadPotentialMatches() {
+        if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
+            loadMatches()
+            updateRemainingLikes()
+        }
+    }
+    
     private func loadMatches() {
         if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            potentialMatches = UserDefaultsManager.shared.getPotentialMatches(for: currentUser.username)
+            var matches = UserDefaultsManager.shared.getPotentialMatches(for: currentUser.username)
+            
+            let matchActions = UserDefaultsManager.shared.getMatchActions()
+            let interactedUserIds = matchActions
+                .filter { $0.fromUser == currentUser.username }
+                .map { $0.toUser }
+            
+            matches = matches.filter { user in
+                !interactedUserIds.contains(user.username)
+            }
+            
             if matchType == .closeToYou {
                 if let userCity = currentUser.personalInfo?.city {
-                    potentialMatches = potentialMatches.filter { $0.personalInfo?.city == userCity }
+                    matches = matches.filter { $0.personalInfo?.city == userCity }
                 }
             }
-            // Reset current index when switching match types
+            
+            potentialMatches = matches
             currentIndex = 0
         }
     }
@@ -322,6 +380,11 @@ struct MatchView: View {
     private func calculateAge(from date: Date) -> Int {
         Calendar.current.dateComponents([.year], from: date, to: Date()).year ?? 0
     }
+    
+    private func resetCardPosition() {
+        translation = .zero
+        rotationAngle = .zero
+    }
 }
 
 struct ScheduleMeetingView: View {
@@ -386,5 +449,11 @@ struct ScheduleMeetingView: View {
         )
         
         meetingCreated = true
+    }
+}
+
+struct MatchsView_Previews: PreviewProvider {
+    static var previews: some View {
+        MatchView()
     }
 }
