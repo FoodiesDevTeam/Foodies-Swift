@@ -32,7 +32,7 @@ struct MatchView: View {
                 .edgesIgnoringSafeArea(.top)
                 
                 // Header Content
-                VStack(spacing: 0) {
+                VStack {
                     HStack {
                         Spacer()
                         
@@ -44,8 +44,8 @@ struct MatchView: View {
                         Spacer()
                     }
                     .padding(.horizontal)
-                    .padding(.top, 50)
                 }
+                .padding(.top, 40)
             }
             
             // Content

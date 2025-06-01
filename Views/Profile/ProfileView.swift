@@ -100,8 +100,8 @@ struct ProfileView: View {
                             endPoint: .trailing
                         )
                         .frame(height: 100)
+                        .edgesIgnoringSafeArea(.top)
 
-                        
                         // Header Content
                         VStack(spacing: 0) {
                             HStack {
@@ -111,18 +111,22 @@ struct ProfileView: View {
                                     .font(.title2)
                                     .bold()
                                     .foregroundColor(.white)
+                                    .font(.system(size: 25))
                                 
                                 Spacer()
                                 
-                                Button {
-                                    showSettings = true
-                                } label: {
-                                    Image(systemName: "gearshape.fill")
-                                        .foregroundColor(.white)
-                                        .font(.system(size: 25))
+                                if isCurrentUser {
+                                    Button {
+                                        showSettings = true
+                                    } label: {
+                                        Image(systemName: "gearshape.fill")
+                                            .foregroundColor(.white)
+                                            .font(.system(size: 23))
+                                    }
                                 }
                             }
-                            .padding(.top, 80)
+                            .padding(.horizontal)
+                            .padding(.top, -50)
                         }
                     }
 
@@ -140,6 +144,7 @@ struct ProfileView: View {
                                 .padding(.bottom, 20)
                         }
                     }
+                    .padding(.top, 20)
                 }
             }
             .navigationBarHidden(true)
