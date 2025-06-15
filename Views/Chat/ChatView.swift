@@ -8,30 +8,30 @@ struct ChatView: View {
     @State private var activeMatches: [UserDefaultsManager.Match] = []
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            ZStack {
-                // Header background
-                LinearGradient(
-                    colors: [.pink, .purple, .blue],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(height: 100)
-                .edgesIgnoringSafeArea(.top)
-                
-                // Header Content
-                VStack(spacing: 0) {
+        ZStack {
+            LinearGradient(
+                colors: [Color(.systemBackground), Color(.systemBackground).opacity(0.8), Color.blue.opacity(0.1), Color.purple.opacity(0.1)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header
+                ZStack {
+                    LinearGradient(
+                        colors: [.pink, .purple, .blue],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .ignoresSafeArea(edges: .top)
                     HStack {
                         Spacer()
-                        
                         Text(LanguageManager.shared.localizedString("Messages"))
                             .font(.title2)
                             .bold()
-                            .foregroundColor(.white)
-                        
+                            .foregroundStyle(Constants.Design.mainGradient)
                         Spacer()
-                        
                         Button(action: {
                             withAnimation {
                                 isSearching.toggle()
@@ -43,56 +43,61 @@ struct ChatView: View {
                         }
                     }
                     .padding(.horizontal)
-                    .padding(.top, 50)
                 }
-            }
-            
-            // Content
-            if activeMatches.isEmpty {
-                VStack(spacing: 20) {
-                    Image(systemName: "message.slash")
-                        .font(.system(size: 50))
-                        .foregroundColor(.gray)
-                    Text("Henüz aktif eşleşmeniz yok")
-                        .font(.headline)
-                        .foregroundColor(.gray)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.white)
-            } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // Recent Label
-                        HStack {
-                            Text("Aktif Eşleşmeler")
-                                .font(.headline)
-                                .foregroundColor(.black)
-                            Spacer()
-                        }
-                        .padding()
-                        .background(Color.white.opacity(0.7))
-                        
-                        // Chat List
-                        LazyVStack(spacing: 0) {
-                            ForEach(activeMatches) { match in
-                                if let currentUser = UserDefaultsManager.shared.getCurrentUser(),
-                                   let partnerUsername = UserDefaultsManager.shared.getMatchPartner(for: currentUser.username, in: match),
-                                   let partnerUser = UserDefaultsManager.shared.getUser(username: partnerUsername) {
-                                    NavigationLink(destination: ChatDetailView(matchedUser: partnerUser, viewModel: viewModel)) {
-                                        ChatRow(match: match, partnerUser: partnerUser)
+                .frame(height: 50)
+                
+                // Content
+                if activeMatches.isEmpty {
+                    VStack(spacing: 20) {
+                        Image(systemName: "message.slash")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                        Text("Henüz aktif eşleşmeniz yok")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.white.opacity(0.7))
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            HStack {
+                                Text("Aktif Eşleşmeler")
+                                    .font(.headline)
+                                    .foregroundStyle(Constants.Design.mainGradient)
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color.white.opacity(0.7))
+                            // Chat List
+                            LazyVStack(spacing: 0) {
+                                ForEach(activeMatches) { match in
+                                    if let currentUser = UserDefaultsManager.shared.getCurrentUser(),
+                                       let partnerUsername = UserDefaultsManager.shared.getMatchPartner(for: currentUser.username, in: match),
+                                       let partnerUser = UserDefaultsManager.shared.getUser(username: partnerUsername) {
+                                        NavigationLink(destination: ChatDetailView(matchedUser: partnerUser, viewModel: viewModel)) {
+                                            ChatRow(match: match, partnerUser: partnerUser)
+                                                .background(
+                                                    RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                                                        .fill(Color(.systemBackground))
+                                                        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                                                )
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                        }
+                                        Divider()
+                                            .padding(.leading)
                                     }
-                                    Divider()
-                                        .padding(.leading)
                                 }
                             }
+                            .background(Color.white.opacity(0.7))
                         }
-                        .background(Color.white.opacity(0.7))
+                        .padding(.top, 16)
+                        .padding(.bottom, 24)
                     }
                 }
-                .background(Color.white)
             }
         }
-        .edgesIgnoringSafeArea(.top)
         .onAppear {
             loadActiveMatches()
         }

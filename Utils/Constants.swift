@@ -11,6 +11,8 @@ enum Constants {
         static let cornerRadius: CGFloat = 12
         static let defaultPadding: CGFloat = 20
         static let defaultSpacing: CGFloat = 30
+        static let shadowRadius: CGFloat = 5
+        static let shadowYOffset: CGFloat = 2
     }
     
     enum ImageSizes {

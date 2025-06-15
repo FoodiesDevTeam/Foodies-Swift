@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct MainTabView: View {
     @State private var selectedTab = 0
@@ -48,6 +51,21 @@ struct MainTabView: View {
             .tag(3)
         }
         .onAppear {
+#if canImport(UIKit)
+            let appearance = UITabBarAppearance()
+            appearance.configureWithOpaqueBackground()
+            appearance.backgroundColor = UIColor.systemBackground
+            // Seçili ikon/text rengi: sabit pembe
+            appearance.stackedLayoutAppearance.selected.iconColor = UIColor.systemPink
+            appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.systemPink]
+            // Seçili olmayan ikon/text rengi
+            appearance.stackedLayoutAppearance.normal.iconColor = UIColor.systemGray
+            appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.systemGray]
+            UITabBar.appearance().standardAppearance = appearance
+            if #available(iOS 15.0, *) {
+                UITabBar.appearance().scrollEdgeAppearance = appearance
+            }
+#endif
             loadPendingRequests()
         }
     }
@@ -56,5 +74,11 @@ struct MainTabView: View {
         if let currentUser = UserDefaultsManager.shared.getCurrentUser() {
             pendingRequests = UserDefaultsManager.shared.getPendingMatchRequests(for: currentUser.username)
         }
+    }
+}
+
+struct MainTabView_Previews: PreviewProvider {
+    static var previews: some View {
+        MainTabView()
     }
 }

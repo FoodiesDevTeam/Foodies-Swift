@@ -195,3 +195,8 @@ struct MatchRequestRow: View {
         }
     }
 } 
+struct MatchRequestsView_Previews: PreviewProvider {
+    static var previews: some View {
+        MatchRequestsView()
+    }
+}

@@ -19,162 +19,107 @@ struct MatchView: View {
     @State private var showPassOverlay = false
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            ZStack {
-                // Header background
-                LinearGradient(
-                    colors: [.pink, .purple, .blue],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(height: 100)
-                .edgesIgnoringSafeArea(.top)
-                
-                // Header Content
-                VStack {
+        ZStack {
+            LinearGradient(
+                colors: [Color(.systemBackground), Color(.systemBackground).opacity(0.8), Color.blue.opacity(0.1), Color.purple.opacity(0.1)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header
+                ZStack {
+                    LinearGradient(
+                        colors: [.pink, .purple, .blue],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .ignoresSafeArea(edges: .top)
                     HStack {
                         Spacer()
-                        
                         Text(LanguageManager.shared.localizedString("Matches"))
                             .font(.title2)
                             .bold()
-                            .foregroundColor(.white)
-                        
+                            .foregroundStyle(Constants.Design.mainGradient)
                         Spacer()
                     }
                     .padding(.horizontal)
                 }
-                .padding(.top, 40)
-            }
-            
-            // Content
-            if potentialMatches.isEmpty {
-                VStack {
-                    Spacer()
-                    Text(LanguageManager.shared.localizedString("no_more_matches"))
-                        .font(.title)
-                        .foregroundColor(.gray)
-                    Spacer()
-                }
-            } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // Profile Photo
-                        if let currentMatch = potentialMatches.indices.contains(currentIndex) ? potentialMatches[currentIndex] : nil {
-                            if let photos = currentMatch.photos, !photos.isEmpty,
-                               let photoData = photos.first,
-                               let uiImage = UIImage(data: photoData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(height: 450)
-                                    .clipped()
-                            }
-                        }
-                        
-                        // User Info with Purple Background
-                        VStack(alignment: .leading, spacing: 12) {
+                .frame(height: 50)
+                
+                // Content
+                if potentialMatches.isEmpty {
+                    VStack {
+                        Spacer()
+                        Text(LanguageManager.shared.localizedString("no_more_matches"))
+                            .font(.title)
+                            .foregroundColor(.gray)
+                        Spacer()
+                    }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            // Profile Photo
                             if let currentMatch = potentialMatches.indices.contains(currentIndex) ? potentialMatches[currentIndex] : nil {
-                                if let info = currentMatch.personalInfo {
-                                    // Name and Age
-                                    Text("\(info.firstName) \(info.lastName), \(calculateAge(from: info.birthDate))")
-                                        .font(.title)
-                                        .bold()
-                                        .foregroundColor(.white)
-                                    
-                                    // Bio
-                                    if let bio = currentMatch.bio, !bio.isEmpty {
-                                        Text(bio)
-                                            .foregroundColor(.white.opacity(0.9))
-                                            .font(.body)
-                                    }
-                                    
-                                    // Interests
-                                    if let preferences = currentMatch.appPreferences {
-                                        ScrollView(.horizontal, showsIndicators: false) {
-                                            HStack(spacing: 8) {
-                                                ForEach(preferences.hobbies + preferences.foodPreferences, id: \.self) { interest in
-                                                    Text(interest)
-                                                        .font(.subheadline)
-                                                        .foregroundColor(.white)
-                                                        .padding(.horizontal, 16)
-                                                        .padding(.vertical, 8)
-                                                        .background(Color.white.opacity(0.2))
-                                                        .cornerRadius(20)
+                                if let photos = currentMatch.photos, !photos.isEmpty,
+                                   let photoData = photos.first,
+                                   let uiImage = UIImage(data: photoData) {
+                                    Image(uiImage: uiImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(height: 350)
+                                        .clipShape(RoundedRectangle(cornerRadius: Constants.Design.cornerRadius * 2))
+                                        .shadow(color: Color.black.opacity(0.12), radius: 12, x: 0, y: 6)
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 16)
+                                }
+                            }
+                            // User Info Card
+                            VStack(alignment: .leading, spacing: 12) {
+                                if let currentMatch = potentialMatches.indices.contains(currentIndex) ? potentialMatches[currentIndex] : nil {
+                                    if let info = currentMatch.personalInfo {
+                                        Text("\(info.firstName) \(info.lastName), \(calculateAge(from: info.birthDate))")
+                                            .font(.title2)
+                                            .bold()
+                                            .foregroundStyle(Constants.Design.mainGradient)
+                                        if let bio = currentMatch.bio, !bio.isEmpty {
+                                            Text(bio)
+                                                .foregroundColor(.secondary)
+                                                .font(.body)
+                                        }
+                                        if let preferences = currentMatch.appPreferences {
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 8) {
+                                                    ForEach(preferences.hobbies + preferences.foodPreferences, id: \ .self) { interest in
+                                                        Text(interest)
+                                                            .font(.subheadline)
+                                                            .foregroundColor(.white)
+                                                            .padding(.horizontal, 16)
+                                                            .padding(.vertical, 8)
+                                                            .background(Constants.Design.mainGradient)
+                                                            .cornerRadius(20)
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
+                            .padding(16)
+                            .background(
+                                RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                                    .fill(Color(.systemBackground))
+                                    .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                            )
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
                         }
-                        .padding()
-                        .background(Color.purple)
+                        .padding(.bottom, 24)
                     }
-                    .offset(x: translation.width, y: 0)
-                    .rotationEffect(rotationAngle, anchor: .bottom)
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                translation = value.translation
-                                rotationAngle = Angle(degrees: Double(translation.width / 20.0))
-                                
-                                if translation.width > 50 {
-                                    showLikeOverlay = true
-                                    showPassOverlay = false
-                                } else if translation.width < -50 {
-                                    showPassOverlay = true
-                                    showLikeOverlay = false
-                                } else {
-                                    showLikeOverlay = false
-                                    showPassOverlay = false
-                                }
-                            }
-                            .onEnded { value in
-                                let dragThreshold: CGFloat = 100
-                                if abs(value.translation.width) > dragThreshold {
-                                    if value.translation.width > dragThreshold {
-                                        handleLike()
-                                    } else {
-                                        handlePass()
-                                    }
-                                    resetCardPosition()
-                                } else {
-                                    withAnimation(.spring()) {
-                                        resetCardPosition()
-                                    }
-                                }
-                                showLikeOverlay = false
-                                showPassOverlay = false
-                            }
-                    )
-                    .overlay(
-                        ZStack {
-                            if showLikeOverlay {
-                                Text("LIKE")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.green)
-                                    .padding()
-                                    .background(Color.white.opacity(0.7))
-                                    .cornerRadius(10)
-                            }
-                            if showPassOverlay {
-                                Text("NOPE")
-                                    .font(.largeTitle)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.red)
-                                    .padding()
-                                    .background(Color.white.opacity(0.7))
-                                    .cornerRadius(10)
-                            }
-                        }
-                    )
                 }
             }
         }
-        .edgesIgnoringSafeArea(.top)
         .onAppear {
             loadPotentialMatches()
         }
@@ -186,16 +131,13 @@ struct MatchView: View {
         .overlay(
             ZStack {
                 if showMatchAlert, let user = matchedUser, let info = user.personalInfo {
-                    // Match Alert Overlay
                     Color.black.opacity(0.6)
-                        .edgesIgnoringSafeArea(.all)
-                    
+                        .ignoresSafeArea()
                     VStack(spacing: 20) {
                         Text(LanguageManager.shared.localizedString("successful_match"))
                             .font(.title)
                             .bold()
                             .foregroundColor(.white)
-                        
                         Spacer()
                         
                         if let photoData = user.photos?.first,

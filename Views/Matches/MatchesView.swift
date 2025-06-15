@@ -12,32 +12,31 @@ struct MatchesView: View {
     @StateObject private var languageManager = LanguageManager.shared
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            ZStack {
-                // Header background
-                LinearGradient(
-                    colors: [.pink, .purple, .blue],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(height: 100)
-                .edgesIgnoringSafeArea(.top)
-                
-                // Header Content
-                VStack {
+        ZStack {
+            LinearGradient(
+                colors: [Color(.systemBackground), Color(.systemBackground).opacity(0.8), Color.blue.opacity(0.1), Color.purple.opacity(0.1)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Header
+                ZStack {
+                    LinearGradient(
+                        colors: [.pink, .purple, .blue],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .ignoresSafeArea(edges: .top)
                     HStack {
                         Spacer()
-                        
                         Text(LanguageManager.shared.localizedString("matches"))
                             .font(.title2)
                             .bold()
-                            .foregroundColor(.white)
-                        
+                            .foregroundStyle(Constants.Design.mainGradient)
                         Spacer()
-                        
                         HStack(spacing: 20) {
-                            // Bildirim butonu
                             Button(action: {
                                 loadPendingRequests()
                                 showMatchRequests = true
@@ -46,7 +45,6 @@ struct MatchesView: View {
                                     Image(systemName: "bell.fill")
                                         .foregroundColor(.white)
                                         .font(.system(size: 20))
-                                    
                                     if !pendingRequests.isEmpty {
                                         Circle()
                                             .fill(Color.red)
@@ -55,7 +53,6 @@ struct MatchesView: View {
                                     }
                                 }
                             }
-                            
                             Button(action: {
                                 showQROptions = true
                             }) {
@@ -67,17 +64,31 @@ struct MatchesView: View {
                     }
                     .padding(.horizontal)
                 }
-                .padding(.top, 40)
-            }
-            
-            // Content
-            if matches.isEmpty {
-                emptyStateView
-            } else {
-                matchesListView
+                .frame(height: 50)
+                
+                // Content
+                if matches.isEmpty {
+                    emptyStateView
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 20) {
+                            ForEach(matches) { match in
+                                MatchCard(match: match, onRateMatch: { rateMatch(match: match, rating: $0) })
+                                    .padding(8)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                                            .fill(Color(.systemBackground))
+                                            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                                    )
+                                    .padding(.horizontal, 8)
+                            }
+                        }
+                        .padding(.top, 16)
+                        .padding(.bottom, 24)
+                    }
+                }
             }
         }
-        .edgesIgnoringSafeArea(.top)
         .sheet(isPresented: $showQRScanner) {
             QRScannerView(onScan: handleScannedQRCode)
         }
@@ -107,7 +118,6 @@ struct MatchesView: View {
             loadPendingRequests()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("LanguageDidChange"))) { _ in
-            // Dil değişikliğinde UI'ı yenile
             loadMatches()
         }
     }
@@ -155,18 +165,6 @@ struct MatchesView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.white)
-    }
-    
-    private var matchesListView: some View {
-        ScrollView {
-            LazyVStack(spacing: 20) {
-                ForEach(matches) { match in
-                    MatchCard(match: match, onRateMatch: { rateMatch(match: match, rating: $0) })
-                }
-            }
-            .padding()
-        }
-        .background(Color(UIColor.systemGray6))
     }
     
     private func loadMatches() {

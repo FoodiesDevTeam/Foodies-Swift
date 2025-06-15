@@ -44,6 +44,7 @@ struct ProfileView: View {
     @State private var pulsate = false
     @State private var waveOffset = Angle(degrees: 0)
     @State private var isHovering = false
+    @State private var showCameraIcon = false
     let userToDisplay: UserDefaultsManager.User?
     let isCurrentUser: Bool
     
@@ -75,80 +76,247 @@ struct ProfileView: View {
     
     // MARK: - View Body
     var body: some View {
-        NavigationView {
+        VStack(spacing: 0) {
             ZStack {
-                // Background gradient
                 LinearGradient(
-                    colors: [
-                        Color(.systemBackground),
-                        Color(.systemBackground).opacity(0.8),
-                        Color.blue.opacity(0.1),
-                        Color.purple.opacity(0.1)
-                    ],
+                    colors: [Color(.systemBackground), Color(.systemBackground).opacity(0.8), Color.blue.opacity(0.1), Color.purple.opacity(0.1)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
-
+                
                 VStack(spacing: 0) {
                     // Header
                     ZStack {
-                        // Header background
                         LinearGradient(
                             colors: [.pink, .purple, .blue],
                             startPoint: .leading,
                             endPoint: .trailing
                         )
-                        .frame(height: 100)
-                        .edgesIgnoringSafeArea(.top)
-
-                        // Header Content
-                        VStack(spacing: 0) {
-                            HStack {
-                                Spacer()
-                                
-                                Text("Profil")
-                                    .font(.title2)
-                                    .bold()
+                        .ignoresSafeArea(edges: .top)
+                        HStack {
+                            Button {
+                                showSettings = true
+                            } label: {
+                                Image(systemName: "gearshape.fill")
                                     .foregroundColor(.white)
-                                    .font(.system(size: 25))
+                                    .font(.system(size: 23))
+                            }
+                            .frame(width: 32, height: 32)
+                            Spacer()
+                            Text(LanguageManager.shared.localizedString("tab_profile"))
+                                .font(.title2)
+                                .bold()
+                                .foregroundStyle(Constants.Design.mainGradient)
+                            Spacer()
+                            Color.clear
+                                .frame(width: 32, height: 32)
+                        }
+                        .padding(.horizontal)
+                    }
+                    .frame(height: 50)
+                    
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 28) {
+                            // Profil Fotoğrafı ve Ad
+                            VStack(spacing: 12) {
+                                ZStack {
+                                    if let photoData = viewModel.user?.photos?.first, let uiImage = UIImage(data: photoData) {
+                                        Image(uiImage: uiImage)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 130, height: 130)
+                                            .clipShape(Circle())
+                                            .overlay(Circle().stroke(Constants.Design.mainGradient, lineWidth: 4))
+                                            .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 6)
+                                            .overlay(
+                                                Group {
+                                                    if isCurrentUser && showCameraIcon {
+                                                        Circle()
+                                                            .fill(Color.black.opacity(0.25))
+                                                            .overlay(
+                                                                Image(systemName: "camera.fill")
+                                                                    .foregroundColor(.white)
+                                                                    .font(.system(size: 32))
+                                                            )
+                                                            .onTapGesture {
+                                                                showCameraIcon = false
+                                                                showPhotosAndBio = true
+                                                            }
+                                                    }
+                                                }
+                                            )
+                                            .onTapGesture {
+                                                if isCurrentUser && !showCameraIcon {
+                                                    showCameraIcon = true
+                                                }
+                                            }
+                                    } else {
+                                        Circle()
+                                            .fill(Color.gray.opacity(0.2))
+                                            .frame(width: 130, height: 130)
+                                            .overlay(
+                                                Image(systemName: "person.fill")
+                                                    .resizable()
+                                                    .scaledToFit()
+                                                    .frame(width: 60, height: 60)
+                                                    .foregroundColor(.gray)
+                                            )
+                                            .overlay(Circle().stroke(Constants.Design.mainGradient, lineWidth: 4))
+                                            .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 6)
+                                            .overlay(
+                                                Group {
+                                                    if isCurrentUser && showCameraIcon {
+                                                        Circle()
+                                                            .fill(Color.black.opacity(0.25))
+                                                            .overlay(
+                                                                Image(systemName: "camera.fill")
+                                                                    .foregroundColor(.white)
+                                                                    .font(.system(size: 32))
+                                                            )
+                                                            .onTapGesture {
+                                                                showCameraIcon = false
+                                                                showPhotosAndBio = true
+                                                            }
+                                                    }
+                                                }
+                                            )
+                                            .onTapGesture {
+                                                if isCurrentUser && !showCameraIcon {
+                                                    showCameraIcon = true
+                                                }
+                                            }
+                                    }
+                                }
+                                .padding(.top, 16)
                                 
-                                Spacer()
-                                
-                                if isCurrentUser {
-                                    Button {
-                                        showSettings = true
-                                    } label: {
-                                        Image(systemName: "gearshape.fill")
-                                            .foregroundColor(.white)
-                                            .font(.system(size: 23))
+                                if let user = viewModel.user, let info = user.personalInfo {
+                                    Text("\(info.firstName) \(info.lastName)")
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundStyle(Constants.Design.mainGradient)
+                                    HStack(spacing: 8) {
+                                        if let city = info.city {
+                                            Image(systemName: "mappin.and.ellipse")
+                                                .foregroundColor(.gray)
+                                                .font(.system(size: 16))
+                                            Text(city)
+                                                .font(.subheadline)
+                                                .foregroundColor(.gray)
+                                        }
+                                        Text(viewModel.formatDate(info.birthDate))
+                                            .font(.subheadline)
+                                            .foregroundColor(.gray)
+                                    }
+                                    if let bio = user.bio, !bio.isEmpty {
+                                        Text(bio)
+                                            .font(.body)
+                                            .foregroundColor(.secondary)
+                                            .multilineTextAlignment(.center)
+                                            .padding(.horizontal, 24)
                                     }
                                 }
                             }
-                            .padding(.horizontal)
-                            .padding(.top, -50)
+                            // Bilgi Kartları
+                            VStack(spacing: 18) {
+                                // Kişisel Bilgiler
+                                VStack(spacing: 10) {
+                                    if let user = viewModel.user, let info = user.personalInfo {
+                                        infoRow(icon: "person.fill", text: "\(info.firstName) \(info.lastName)")
+                                        infoRow(icon: "calendar", text: viewModel.formatDate(info.birthDate))
+                                        if let city = info.city {
+                                            infoRow(icon: "mappin.circle.fill", text: city)
+                                        }
+                                        if let occupation = info.occupation {
+                                            infoRow(icon: "briefcase.fill", text: occupation)
+                                        }
+                                        HStack(spacing: 12) {
+                                            statusItem(icon: "flame.fill", text: info.smokingStatus == .yes ? "Evet" : "Hayır", title: "Sigara")
+                                            statusItem(icon: "wineglass.fill", text: info.drinkingStatus == .yes ? "Evet" : "Hayır", title: "Alkol")
+                                        }
+                                        .padding(.top, 2)
+                                    }
+                                }
+                                .padding(16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                                        .fill(Color(.systemBackground))
+                                        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                                )
+                                .padding(.horizontal, 12)
+                                // Hobiler ve Tercihler
+                                if !viewModel.userFoodPreferences.isEmpty || !viewModel.userHobbies.isEmpty {
+                                    VStack(alignment: .leading, spacing: 10) {
+                                        if !viewModel.userFoodPreferences.isEmpty {
+                                            Text("Yemek Zevkleri")
+                                                .font(.headline)
+                                                .foregroundStyle(Constants.Design.mainGradient)
+                                                .padding(.bottom, 2)
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 8) {
+                                                    ForEach(viewModel.userFoodPreferences) { food in
+                                                        foodPreferenceTag(food.name)
+                                                    }
+                                                }
+                                                .padding(.horizontal, 2)
+                                            }
+                                        }
+                                        if !viewModel.userHobbies.isEmpty {
+                                            Text("Hobiler")
+                                                .font(.headline)
+                                                .foregroundStyle(Constants.Design.mainGradient)
+                                                .padding(.top, 6)
+                                            ScrollView(.horizontal, showsIndicators: false) {
+                                                HStack(spacing: 8) {
+                                                    ForEach(viewModel.userHobbies) { hobby in
+                                                        hobbyTag(hobby.name)
+                                                    }
+                                                }
+                                                .padding(.horizontal, 2)
+                                            }
+                                        }
+                                    }
+                                    .padding(16)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
+                                            .fill(Color(.systemBackground))
+                                            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                                    )
+                                    .padding(.horizontal, 12)
+                                }
+                            }
+                            // Butonlar
+                            VStack(spacing: 14) {
+                                Button(action: { showEditProfile = true }) {
+                                    Label(LanguageManager.shared.localizedString("edit_profile"), systemImage: "pencil")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Constants.Design.mainGradient)
+                                        .cornerRadius(Constants.Design.cornerRadius)
+                                        .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
+                                }
+                                Button(action: { showEditBioView = true }) {
+                                    Label(LanguageManager.shared.localizedString("edit_bio"), systemImage: "text.quote")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(Constants.Design.mainGradient)
+                                        .cornerRadius(Constants.Design.cornerRadius)
+                                        .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 8)
                         }
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
                     }
-
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            // Profile Header
-                            profileHeaderView
-                                .padding(.top, 15)
-                            
-                            // Profile Info
-                            profileInfoView
-                            
-                            // Edit Buttons
-                            editButtonsView
-                                .padding(.bottom, 20)
-                        }
-                    }
-                    .padding(.top, 20)
                 }
             }
-            .navigationBarHidden(true)
         }
+        .navigationBarHidden(true)
         .sheet(isPresented: $showSettings) {
             SettingsView(onLogout: handleLogout)
         }
@@ -251,7 +419,7 @@ struct ProfileView: View {
     }
     
     private var profileInfoView: some View {
-        VStack(spacing: 15) {
+        VStack(spacing: 8) {
             if let user = viewModel.user, let info = user.personalInfo {
                 // Basic Info
                 infoRow(icon: "person.fill", text: "\(info.firstName) \(info.lastName)")
@@ -264,17 +432,17 @@ struct ProfileView: View {
                 }
                 
                 // Status Info
-                HStack(spacing: 20) {
+                HStack(spacing: 12) {
                     statusItem(icon: "flame.fill", text: info.smokingStatus == .yes ? "Evet" : "Hayır", title: "Sigara")
                     statusItem(icon: "wineglass.fill", text: info.drinkingStatus == .yes ? "Evet" : "Hayır", title: "Alkol")
                 }
-                .padding(.top, 5)
+                .padding(.top, 2)
             }
         }
-        .padding()
+        .padding(8)
         .background(Color(.systemGray6))
         .cornerRadius(12)
-        .padding(.horizontal)
+        .padding(.horizontal, 8)
     }
     
     private var editButtonsView: some View {
