@@ -335,7 +335,10 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showPhotosAndBio) {
             NavigationView {
-                PhotosAndBioView(onboardingState: .photoBio)
+                PhotosAndBioView(onboardingState: .photoBio) {
+                    showPhotosAndBio = false
+                    viewModel.loadUserData()
+                }
             }
         }
         .sheet(isPresented: $showEditBioView) {
