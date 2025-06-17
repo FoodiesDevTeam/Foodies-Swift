@@ -10,6 +10,8 @@ struct MatchesView: View {
     @State private var showMatchRequests = false
     @State private var pendingRequests: [MatchRequest] = []
     @StateObject private var languageManager = LanguageManager.shared
+    @State private var showChatDetail = false
+    @State private var selectedUser: UserDefaultsManager.User?
     
     var body: some View {
         ZStack {
@@ -71,16 +73,17 @@ struct MatchesView: View {
                     emptyStateView
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 20) {
+                        VStack(spacing: 16) {
                             ForEach(matches) { match in
-                                MatchCard(match: match, onRateMatch: { rateMatch(match: match, rating: $0) })
-                                    .padding(8)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: Constants.Design.cornerRadius)
-                                            .fill(Color(.systemBackground))
-                                            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
-                                    )
-                                    .padding(.horizontal, 8)
+                                if let user = UserDefaultsManager.shared.getUser(username: match.username) {
+                                    Button(action: {
+                                        selectedUser = user
+                                        showChatDetail = true
+                                    }) {
+                                        ChatBoxCard(user: user)
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
                             }
                         }
                         .padding(.top, 16)
@@ -97,6 +100,11 @@ struct MatchesView: View {
         }
         .sheet(isPresented: $showMatchRequests) {
             MatchRequestsView()
+        }
+        .sheet(isPresented: $showChatDetail) {
+            if let user = selectedUser, let currentUser = UserDefaultsManager.shared.getCurrentUser() {
+                MessagesView(viewModel: ChatViewModel(currentUser: currentUser, partner: user))
+            }
         }
         .actionSheet(isPresented: $showQROptions) {
             ActionSheet(
@@ -218,6 +226,46 @@ struct MatchesView: View {
     
     private func rateMatch(match: Match, rating: Rating) {
         // Derecelendirme işleme mantığı
+    }
+}
+
+struct ChatBoxCard: View {
+    let user: UserDefaultsManager.User
+    var body: some View {
+        HStack(spacing: 16) {
+            if let photoData = user.photos?.first, let uiImage = UIImage(data: photoData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 60, height: 60)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            } else {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: 60, height: 60)
+                    .overlay(
+                        Image(systemName: "person.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(.gray)
+                    )
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text(user.personalInfo?.name ?? user.username)
+                    .font(.headline)
+                if let city = user.personalInfo?.city {
+                    Text(city)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(20)
+        .shadow(color: Color.black.opacity(0.07), radius: 4, x: 0, y: 2)
     }
 }
 

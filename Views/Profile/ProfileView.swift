@@ -95,14 +95,19 @@ struct ProfileView: View {
                         )
                         .ignoresSafeArea(edges: .top)
                         HStack {
-                            Button {
-                                showSettings = true
-                            } label: {
-                                Image(systemName: "gearshape.fill")
-                                    .foregroundColor(.white)
-                                    .font(.system(size: 23))
+                            if isCurrentUser {
+                                Button {
+                                    showSettings = true
+                                } label: {
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 23))
+                                }
+                                .frame(width: 32, height: 32)
+                            } else {
+                                Color.clear
+                                    .frame(width: 32, height: 32)
                             }
-                            .frame(width: 32, height: 32)
                             Spacer()
                             Text(LanguageManager.shared.localizedString("tab_profile"))
                                 .font(.title2)
@@ -285,30 +290,32 @@ struct ProfileView: View {
                                 }
                             }
                             // Butonlar
-                            VStack(spacing: 14) {
-                                Button(action: { showEditProfile = true }) {
-                                    Label(LanguageManager.shared.localizedString("edit_profile"), systemImage: "pencil")
-                                        .foregroundColor(.white)
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Constants.Design.mainGradient)
-                                        .cornerRadius(Constants.Design.cornerRadius)
-                                        .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
+                            if isCurrentUser {
+                                VStack(spacing: 14) {
+                                    Button(action: { showEditProfile = true }) {
+                                        Label(LanguageManager.shared.localizedString("edit_profile"), systemImage: "pencil")
+                                            .foregroundColor(.white)
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(Constants.Design.mainGradient)
+                                            .cornerRadius(Constants.Design.cornerRadius)
+                                            .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
+                                    }
+                                    Button(action: { showEditBioView = true }) {
+                                        Label(LanguageManager.shared.localizedString("edit_bio"), systemImage: "text.quote")
+                                            .foregroundColor(.white)
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(Constants.Design.mainGradient)
+                                            .cornerRadius(Constants.Design.cornerRadius)
+                                            .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
+                                    }
                                 }
-                                Button(action: { showEditBioView = true }) {
-                                    Label(LanguageManager.shared.localizedString("edit_bio"), systemImage: "text.quote")
-                                        .foregroundColor(.white)
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(Constants.Design.mainGradient)
-                                        .cornerRadius(Constants.Design.cornerRadius)
-                                        .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 2)
-                                }
+                                .padding(.horizontal, 12)
+                                .padding(.bottom, 8)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.bottom, 8)
                         }
                         .padding(.top, 8)
                         .padding(.bottom, 24)

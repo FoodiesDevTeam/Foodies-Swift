@@ -602,12 +602,13 @@ class UserDefaultsManager {
     
     func getRemainingDailyLikes(for username: String) -> Int {
         let key = "\(dailyLikesKey)_\(username)_\(Calendar.current.startOfDay(for: Date()))"
-        return defaults.integer(forKey: key)
+        let value = defaults.integer(forKey: key)
+        return value == 0 ? 10 : value
     }
     
     private func resetDailyLikes(for username: String) {
         let key = "\(dailyLikesKey)_\(username)_\(Calendar.current.startOfDay(for: Date()))"
-        defaults.set(3, forKey: key) // Varsayılan günlük 3 like hakkı
+        defaults.set(10, forKey: key) // Varsayılan günlük 10 like hakkı
     }
     
     func updateUserBio(username: String, bio: String) {
@@ -766,5 +767,21 @@ class UserDefaultsManager {
         if let data = try? JSONEncoder().encode(matches) {
             defaults.set(data, forKey: matchesKey)
         }
+    }
+    
+    func sendMatchRequest(fromUser: String, toUser: String) {
+        var requests = getAllMatchRequests()
+        // Aynı kullanıcıya daha önce istek atılmışsa tekrar ekleme
+        let alreadyExists = requests.contains { $0.fromUser == fromUser && $0.toUser == toUser && $0.status == .pending }
+        if alreadyExists { return }
+        let newRequest = MatchRequest(
+            id: UUID().uuidString,
+            fromUser: fromUser,
+            toUser: toUser,
+            timestamp: Date(),
+            status: .pending
+        )
+        requests.append(newRequest)
+        saveMatchRequests(requests)
     }
 } 

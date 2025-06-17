@@ -43,7 +43,6 @@ class SupabaseService {
         return ColorService(client: client)
     }()
     
-   
     let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZZZZZ"
@@ -143,4 +142,30 @@ class SupabaseService {
     func getAppColors(isDarkMode: Bool) async throws -> [AppColor] {
         return try await colorService.getAppColors(isDarkMode: isDarkMode)
     }
+
+    // MARK: - Chat Delegations (Removed for Firebase Migration)
+    
+    // func getOrCreateConversation(user1Id: UUID, user2Id: UUID) async throws -> Conversation {
+    //     return try await chatService.getOrCreateConversation(user1Id: user1Id, user2Id: user2Id)
+    // }
+    // 
+    // func getMessages(conversationId: UUID) async throws -> [Message] {
+    //     return try await chatService.getMessages(conversationId: conversationId)
+    // }
+    // 
+    // func sendMessage(conversationId: UUID, senderId: UUID, receiverId: UUID, content: String) async throws -> Message {
+    //     return try await chatService.sendMessage(conversationId: conversationId, senderId: senderId, receiverId: receiverId, content: content)
+    // }
+    // 
+    // func markMessageAsRead(messageId: UUID) async throws {
+    //     try await chatService.markMessageAsRead(messageId: messageId)
+    // }
+    // 
+    // func subscribeToMessages(conversationId: UUID, onMessageReceived: @escaping (Message) -> Void) {
+    //     chatService.subscribeToMessages(conversationId: conversationId, onMessageReceived: onMessageReceived)
+    // }
+    // 
+    // func unsubscribeFromMessages() {
+    //     chatService.unsubscribeFromMessages()
+    // }
 }

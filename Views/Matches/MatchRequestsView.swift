@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseDatabase
 
 struct MatchRequest: Identifiable, Codable {
     let id: String
@@ -144,6 +145,20 @@ struct MatchRequestRow: View {
                         updatedRequest.status = .accepted
                         UserDefaultsManager.shared.acceptMatchRequest(updatedRequest)
                         onUpdate(updatedRequest)
+                        
+                        if let currentUser = UserDefaultsManager.shared.getCurrentUser(),
+                           let partnerUser = requestingUser {
+                            Task {
+                                do {
+                                    let chatService = FirebaseChatService()
+                                    let conversation = try await chatService.getOrCreateConversation(user1Id: currentUser.id, user2Id: partnerUser.id)
+                                    _ = try await chatService.sendMessage(conversationId: conversation.id, senderId: currentUser.id, receiverId: partnerUser.id, content: "Merhaba! Eşleştiğimize sevindim!")
+                                    print("Otomatik 'Merhaba' mesajı gönderildi.")
+                                } catch {
+                                    print("Otomatik mesaj gönderilirken hata: \(error.localizedDescription)")
+                                }
+                            }
+                        }
                         navigateToChat = true
                     }) {
                         Image(systemName: "checkmark.circle.fill")
@@ -176,10 +191,7 @@ struct MatchRequestRow: View {
     private func navigateToChatDetailView() -> some View {
         if let user = requestingUser,
            let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            ChatDetailView(
-                matchedUser: user,
-                viewModel: ChatViewModel(currentUser: currentUser, partner: user)
-            )
+            MessagesView(viewModel: ChatViewModel(currentUser: currentUser, partner: user))
         } else {
             Text("Kullanıcı bilgisi yüklenemedi.")
         }
