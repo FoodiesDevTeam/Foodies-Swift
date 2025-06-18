@@ -784,4 +784,13 @@ class UserDefaultsManager {
         requests.append(newRequest)
         saveMatchRequests(requests)
     }
+    
+    // MARK: - Mesajı Okundu Olarak İşaretle
+    func markMessageAsRead(messageId: String) {
+        var messages = getAllMessagesFromDefaults()
+        if let index = messages.firstIndex(where: { $0.id == messageId }) {
+            messages[index].isRead = true
+            saveMessages(messages)
+        }
+    }
 } 

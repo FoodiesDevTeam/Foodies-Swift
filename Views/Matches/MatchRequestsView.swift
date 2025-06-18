@@ -1,5 +1,4 @@
 import SwiftUI
-import FirebaseDatabase
 
 struct MatchRequest: Identifiable, Codable {
     let id: String
@@ -38,9 +37,7 @@ struct MatchRequestsView: View {
                 } else {
                     List(requests) { request in
                         MatchRequestRow(request: request) { updatedRequest in
-                            if let index = requests.firstIndex(where: { $0.id == updatedRequest.id }) {
-                                requests[index] = updatedRequest
-                            }
+                            requests.removeAll { $0.id == updatedRequest.id }
                         }
                     }
                 }
@@ -102,12 +99,22 @@ struct MatchRequestRow: View {
                             .foregroundColor(.gray)
                     }
                     
-                    VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(user.personalInfo?.name ?? user.username)
                             .font(.headline)
                         Text("Seni beğendi")
                             .font(.subheadline)
                             .foregroundColor(.gray)
+                        if let foodPreferences = user.appPreferences?.foodPreferences, !foodPreferences.isEmpty {
+                            Text("Yemek Zevkleri: \(foodPreferences.joined(separator: ", "))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        if let hobbies = user.appPreferences?.hobbies, !hobbies.isEmpty {
+                            Text("Hobiler: \(hobbies.joined(separator: ", "))")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 } else {
                     HStack {
@@ -145,21 +152,30 @@ struct MatchRequestRow: View {
                         updatedRequest.status = .accepted
                         UserDefaultsManager.shared.acceptMatchRequest(updatedRequest)
                         onUpdate(updatedRequest)
-                        
                         if let currentUser = UserDefaultsManager.shared.getCurrentUser(),
                            let partnerUser = requestingUser {
                             Task {
-                                do {
-                                    let chatService = FirebaseChatService()
-                                    let conversation = try await chatService.getOrCreateConversation(user1Id: currentUser.id, user2Id: partnerUser.id)
-                                    _ = try await chatService.sendMessage(conversationId: conversation.id, senderId: currentUser.id, receiverId: partnerUser.id, content: "Merhaba! Eşleştiğimize sevindim!")
+                                UserDefaultsManager.shared.sendMessage(senderId: currentUser.id, receiverId: partnerUser.id, content: "Merhaba! Eşleştiğimize sevindim!")
+                                print("Otomatik 'Merhaba' mesajı gönderildi.")
+                                await MainActor.run {
+                                    navigateToChat = true
+                                }
+                            }
+                        } else {
+                            Task {
+                                while requestingUser == nil {
+                                    try? await Task.sleep(nanoseconds: 100_000_000)
+                                }
+                                if let currentUser = UserDefaultsManager.shared.getCurrentUser(),
+                                   let partnerUser = requestingUser {
+                                    UserDefaultsManager.shared.sendMessage(senderId: currentUser.id, receiverId: partnerUser.id, content: "Merhaba! Eşleştiğimize sevindim!")
                                     print("Otomatik 'Merhaba' mesajı gönderildi.")
-                                } catch {
-                                    print("Otomatik mesaj gönderilirken hata: \(error.localizedDescription)")
+                                    await MainActor.run {
+                                        navigateToChat = true
+                                    }
                                 }
                             }
                         }
-                        navigateToChat = true
                     }) {
                         Image(systemName: "checkmark.circle.fill")
                             .foregroundColor(.green)
@@ -191,9 +207,11 @@ struct MatchRequestRow: View {
     private func navigateToChatDetailView() -> some View {
         if let user = requestingUser,
            let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-            MessagesView(viewModel: ChatViewModel(currentUser: currentUser, partner: user))
+            let chatUser = User(from: user)
+            let currentChatUser = User(from: currentUser)
+            MessagesView(viewModel: ChatViewModel(currentUser: currentChatUser, partner: chatUser))
         } else {
-            Text("Kullanıcı bilgisi yüklenemedi.")
+            ProgressView()
         }
     }
     

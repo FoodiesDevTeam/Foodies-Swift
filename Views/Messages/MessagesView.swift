@@ -9,7 +9,7 @@ struct MessagesView: View {
         _MessagesViewContent(
             viewModel: viewModel,
             messageText: $messageText,
-            isInputActive: $isInputActive
+            isInputActive: _isInputActive.projectedValue
         )
     }
 }

@@ -74,15 +74,40 @@ struct MatchesView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
-                            ForEach(matches) { match in
+                            // Her partner için sadece bir kutucuk göster
+                            var uniquePartners = Set<String>()
+                            ForEach(matches.filter { match in
+                                let currentUser = UserDefaultsManager.shared.getCurrentUser()?.username ?? ""
+                                let partner = match.user1 == currentUser ? match.user2 : match.user1
+                                if uniquePartners.contains(partner) {
+                                    return false
+                                } else {
+                                    uniquePartners.insert(partner)
+                                    return true
+                                }
+                            }) { match in
                                 if let user = UserDefaultsManager.shared.getUser(username: match.username) {
-                                    Button(action: {
-                                        selectedUser = user
-                                        showChatDetail = true
-                                    }) {
-                                        ChatBoxCard(user: user)
+                                    HStack(spacing: 8) {
+                                        Button(action: {
+                                            selectedUser = user
+                                            showChatDetail = true
+                                        }) {
+                                            ChatBoxCard(user: user)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
+                                        Button(action: {
+                                            // QR doğrulama ekranını aç
+                                            showQROptions = true
+                                        }) {
+                                            Image(systemName: "qrcode.viewfinder")
+                                                .foregroundColor(.purple)
+                                                .font(.system(size: 28))
+                                                .padding(8)
+                                                .background(Color.white)
+                                                .clipShape(Circle())
+                                                .shadow(radius: 2)
+                                        }
                                     }
-                                    .buttonStyle(PlainButtonStyle())
                                 }
                             }
                         }
@@ -103,7 +128,9 @@ struct MatchesView: View {
         }
         .sheet(isPresented: $showChatDetail) {
             if let user = selectedUser, let currentUser = UserDefaultsManager.shared.getCurrentUser() {
-                MessagesView(viewModel: ChatViewModel(currentUser: currentUser, partner: user))
+                let chatUser = User(from: user)
+                let currentChatUser = User(from: currentUser)
+                MessagesView(viewModel: ChatViewModel(currentUser: currentChatUser, partner: chatUser))
             }
         }
         .actionSheet(isPresented: $showQROptions) {

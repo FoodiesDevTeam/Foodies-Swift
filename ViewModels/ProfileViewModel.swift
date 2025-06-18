@@ -45,9 +45,14 @@ class ProfileViewModel: ObservableObject {
             self.loadProfileImageFromUser()
             self.personalInfo = user.personalInfo
             self.matchingPreferences = user.matchingPreferences
-            // Bu kullanıcı için tercihleri yüklemek gerekmeyebilir, temizle
-            self.userFoodPreferences = []
-            self.userHobbies = []
+            // Hobiler ve yemek zevkleri de doldurulsun
+            if let appPrefs = user.appPreferences {
+                self.userFoodPreferences = appPrefs.foodPreferences.map { FoodPreferenceNew(id: UUID(), name: $0, createdAt: nil) }
+                self.userHobbies = appPrefs.hobbies.map { HobbyNew(id: UUID(), name: $0, createdAt: nil) }
+            } else {
+                self.userFoodPreferences = []
+                self.userHobbies = []
+            }
         }
     }
     
