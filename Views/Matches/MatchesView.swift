@@ -13,6 +13,19 @@ struct MatchesView: View {
     @State private var showChatDetail = false
     @State private var selectedUser: UserDefaultsManager.User?
     
+    // Fonksiyon burada, body'nin dışında!
+    private func getUniqueMatches() -> [Match] {
+        var uniqueUsernames = Set<String>()
+        var uniqueMatches: [Match] = []
+        for match in matches {
+            if !uniqueUsernames.contains(match.username) {
+                uniqueUsernames.insert(match.username)
+                uniqueMatches.append(match)
+            }
+        }
+        return uniqueMatches
+    }
+    
     var body: some View {
         ZStack {
             LinearGradient(
@@ -74,18 +87,7 @@ struct MatchesView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 16) {
-                            // Her partner için sadece bir kutucuk göster
-                            var uniquePartners = Set<String>()
-                            ForEach(matches.filter { match in
-                                let currentUser = UserDefaultsManager.shared.getCurrentUser()?.username ?? ""
-                                let partner = match.user1 == currentUser ? match.user2 : match.user1
-                                if uniquePartners.contains(partner) {
-                                    return false
-                                } else {
-                                    uniquePartners.insert(partner)
-                                    return true
-                                }
-                            }) { match in
+                            ForEach(getUniqueMatches()) { match in
                                 if let user = UserDefaultsManager.shared.getUser(username: match.username) {
                                     HStack(spacing: 8) {
                                         Button(action: {
